@@ -50,7 +50,9 @@ em.modifica{background:var(--wa)!important}.tgl{display:flex;align-items:center;
 
 /* Modalità condivisa: dati online su Supabase, accesso solo su invito */
 const CFG=window.PTP_CFG||{},H0=location.hash,NEEDPW=/type=(invite|recovery)/.test(H0);
-if(typeof claude==='undefined'&&CFG.url&&window.supabase){(()=>{
+const CFGOK=/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(CFG.url||'').trim())&&String(CFG.key||'').length>20;
+if(typeof claude==='undefined'&&(!CFGOK||!window.supabase))window.claude={use:async()=>{throw new Error(!CFGOK?'configurazione mancante o non valida in config.js (Project URL e chiave anon). Dopo aver salvato il file, ricarica la pagina con Ctrl+F5.':'libreria Supabase non caricata, controlla la connessione e riprova.')}};
+if(typeof claude==='undefined'&&CFGOK&&window.supabase){(()=>{
 const sb=supabase.createClient(CFG.url,CFG.key),rid=()=>crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2),sd=(id,v)=>({id,exists:v!=null,data:()=>v}),subs=[];
 const ck=r=>{if(r.error)throw new Error(r.error.message);return r.data},w=async p=>{const r=ck(await p);subs.forEach(f=>f());return r};
 const MAPS={staff:{t:'profiles',m:{email:'email',name:'name',role:'role',calEmail:'cal_email',calSync:'cal_sync',canPunch:'can_punch',canEditPast:'can_edit_past',canRequest:'can_request',active:'active',joined:'joined',created:'created_at'}},
