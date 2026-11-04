@@ -1,353 +1,282 @@
 <!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestione Presenze & Permessi Pro</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#4f46e5"><link rel="apple-touch-icon" href="icon-192.png"><meta name="mobile-web-app-capable" content="yes"><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script><title>Presenze & Ticket Pro</title>
+<style>
+:root{--bg:#f3f5fb;--card:#fff;--tx:#1a2233;--mu:#6a7589;--ac:#4f46e5;--bd:#e2e7f1;--ok:#16a34a;--er:#dc2626;--wa:#d97706;--fe:#0284c7;--ma:#e11d48;--pe:#9333ea;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1320;--card:#172033;--tx:#e8edf7;--mu:#94a1b6;--bd:#26324a}}
+:root[data-theme="dark"]{--bg:#0e1320;--card:#172033;--tx:#e8edf7;--mu:#94a1b6;--bd:#26324a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;padding-bottom:84px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:linear-gradient(135deg,#4f46e5,#0ea5e9);color:#fff}
+header h1{margin:0;font-size:18px}header small{opacity:.9;display:block}
+.badge{background:rgba(255,255,255,.25);padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600}
+main{max-width:860px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:12px;overflow-x:auto}
+.mu{color:var(--mu);font-size:13px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.end{justify-content:flex-end}.sp{justify-content:space-between}
+.clk{font-size:44px;font-weight:700;letter-spacing:1px}
+.stat{flex:1;min-width:90px;background:var(--bg);border-radius:12px;padding:10px;text-align:center}.stat b{display:block;font-size:20px}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:600;background:var(--ac);color:#fff;cursor:pointer}
+.btn.ok{background:var(--ok)}.btn.er{background:var(--er)}.btn.gh{background:var(--bg);color:var(--tx);border:1px solid var(--bd)}.btn.sm{padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.hero .row{margin-top:12px}.hero .btn{flex:1}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:8px 2px;font-size:11px;cursor:pointer;position:relative}
+nav button span{display:block;font-size:20px}nav button.on{color:var(--ac);font-weight:700}
+nav i{position:absolute;top:2px;right:18%;background:var(--er);color:#fff;border-radius:99px;font-size:10px;padding:0 5px;font-style:normal}
+h2{font-size:17px;margin:4px 0 10px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cal b{text-align:center;font-size:12px;color:var(--mu)}
+.cell{min-height:64px;border:1px solid var(--bd);border-radius:10px;padding:3px;font-size:12px;cursor:pointer;overflow:hidden}
+.cell.on{outline:2px solid var(--ac)}.cell.today span{background:var(--ac);color:#fff;border-radius:99px;padding:0 6px}
+.cell em{display:block;font-style:normal;font-size:10px;border-radius:5px;padding:0 3px;margin-top:2px;color:#fff;background:var(--ok);white-space:nowrap;overflow:hidden}
+em.ferie{background:var(--fe)!important}em.malattia{background:var(--ma)!important}em.permesso{background:var(--pe)!important}em.tk{background:var(--wa)!important}em.pn{opacity:.55;outline:1px dashed #fff}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 6px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;color:#fff;background:var(--mu)}
+.tag.approved,.tag.Fatto{background:var(--ok)}.tag.pending,.tag.Attesa{background:var(--wa)}.tag.rejected{background:var(--er)}.tag.Fare{background:var(--ac)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.md{background:var(--card);width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.md h3{margin:0 0 10px}.f{display:block;margin-bottom:10px}.f span{display:block;font-size:13px;color:var(--mu);margin-bottom:3px}
+input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
+.ph{width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin:6px 0;cursor:pointer}
+.sel{margin-bottom:10px;max-width:320px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:#111827;color:#fff;padding:10px 16px;border-radius:12px;z-index:30;display:none}
+em.modifica{background:var(--wa)!important}.tgl{display:flex;align-items:center;gap:8px;padding:5px 0;margin:0}.tgl input{width:auto}.perm{margin-top:8px;border-top:1px solid var(--bd);padding-top:6px}input[readonly]{opacity:.7}
+</style></head><body>
+<header><div><h1>⏱️ Presenze & Ticket Pro</h1><small id="who"></small></div><span style="display:flex;gap:8px;align-items:center"><button class="badge" id="bell" onclick="notifPanel()" style="border:0;color:#fff;cursor:pointer;font-size:15px">🔔</button><span class="badge" id="role"></span></span></header>
+<main id="v"><div class="card mu">Caricamento…</div></main>
+<nav id="nav"></nav><div id="toast"></div>
+<script>
 
-  <!-- TOPNAV -->
-  <nav class="bg-slate-900 text-white p-4 shadow-lg flex justify-between items-center">
-    <div class="flex items-center space-x-3">
-      <i class="fa-solid fa-clock-rotate-left text-blue-400 text-2xl"></i>
-      <h1 class="font-bold text-xl tracking-wide">PresenzePro</h1>
-    </div>
-    <div id="userInfo" class="hidden flex items-center space-x-4 text-sm">
-      <span id="userBadge" class="bg-blue-600 text-xs px-2 py-1 rounded font-semibold uppercase"></span>
-      <span id="userEmail" class="text-slate-300"></span>
-      <button onclick="logout()" class="text-red-400 hover:text-red-300 text-base"><i class="fa-solid fa-right-from-bracket"></i></button>
-    </div>
-  </nav>
-
-  <div class="max-w-6xl mx-auto p-4 md:p-6">
-
-    <!-- LOGIN SCREEN -->
-    <div id="loginSection" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md mt-10">
-      <h2 class="text-2xl font-bold mb-6 text-center text-slate-800">Accedi al Sistema</h2>
-      <form onsubmit="handleLogin(event)" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium mb-1">Email</label>
-          <input type="email" id="loginEmail" required class="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Password</label>
-          <input type="password" id="loginPassword" required class="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
-        </div>
-        <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition">Accedi</button>
-      </form>
-    </div>
-
-    <!-- MAIN APP DASHBOARD -->
-    <div id="appSection" class="hidden space-y-6">
-
-      <!-- PANNELLO NOTIFICHE ADMIN/OWNER -->
-      <div id="notificationsPanel" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-5 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center space-x-2 text-amber-800">
-            <i class="fa-solid fa-bell text-xl"></i>
-            <h3 class="font-bold text-lg">Notifiche e Richieste da Leggere</h3>
-          </div>
-          <span id="unreadCount" class="bg-amber-600 text-white text-xs px-2.5 py-1 rounded-full font-bold">0 Nuove</span>
-        </div>
-        <div id="notificationsList" class="space-y-3">
-          <!-- Inserite dinamicamente -->
-        </div>
-      </div>
-
-      <!-- SEZIONE TIMBRATURA (DIPENDENTE) -->
-      <div class="bg-white rounded-xl shadow-sm p-6 border">
-        <h3 class="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2">
-          <i class="fa-solid fa-fingerprint text-blue-600"></i> Timbratura Rapida
-        </h3>
-        <div id="clockStatus" class="mb-4 p-3 rounded-lg text-sm bg-slate-50 border">Caricamento stato...</div>
-        <div class="flex gap-4">
-          <button id="btnClockIn" onclick="clockAction('in')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrata
-          </button>
-          <button id="btnClockOut" onclick="clockAction('out')" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-arrow-right-from-bracket"></i> Uscita
-          </button>
-        </div>
-      </div>
-
-      <!-- RICHIESTA PERMESSO (DIPENDENTE) -->
-      <div id="requestLeaveSection" class="bg-white rounded-xl shadow-sm p-6 border">
-        <h3 class="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2">
-          <i class="fa-solid fa-calendar-plus text-indigo-600"></i> Invia Richiesta Permesso / Ferie
-        </h3>
-        <form onsubmit="handleLeaveRequest(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-xs font-semibold mb-1 uppercase">Tipo Richiesta</label>
-            <select id="reqType" class="w-full border rounded-lg p-2 text-sm">
-              <option value="Ferie">Ferie</option>
-              <option value="Permesso Orario">Permesso Orario</option>
-              <option value="Malattia">Malattia</option>
-              <option value="Modifica Timbratura">Modifica Timbratura</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold mb-1 uppercase">Inizio</label>
-            <input type="datetime-local" id="reqStart" required class="w-full border rounded-lg p-2 text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold mb-1 uppercase">Fine</label>
-            <input type="datetime-local" id="reqEnd" required class="w-full border rounded-lg p-2 text-sm">
-          </div>
-          <div class="md:col-span-3">
-            <label class="block text-xs font-semibold mb-1 uppercase">Note / Motivazione</label>
-            <input type="text" id="reqReason" placeholder="Motivo della richiesta..." class="w-full border rounded-lg p-2 text-sm">
-          </div>
-          <button type="submit" class="md:col-span-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg text-sm transition">Invia Segnalazione all'Admin</button>
-        </form>
-      </div>
-
-      <!-- GESTIONE MEMBRI E PERMESSI (SOLO OWNER / ADMIN) -->
-      <div id="adminPanel" class="hidden bg-white rounded-xl shadow-sm p-6 border space-y-6">
-        <div class="flex justify-between items-center border-b pb-4">
-          <div>
-            <h3 class="font-bold text-xl text-slate-800">Gestione Membri & Permessi</h3>
-            <p class="text-sm text-slate-500">Assegna permessi di timbratura, modifica e invita nuovi dipendenti</p>
-          </div>
-          <button onclick="toggleInviteModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
-            <i class="fa-solid fa-user-plus"></i> Invita Dipendente
-          </button>
-        </div>
-
-        <!-- TABELLA MEMBRI -->
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr class="bg-slate-50 border-b">
-                <th class="p-3">Utente</th>
-                <th class="p-3">Ruolo</th>
-                <th class="p-3">Timbratura</th>
-                <th class="p-3">Modifica Timbrature</th>
-                <th class="p-3">Richiesta Permessi</th>
-                <th class="p-3 text-right">Azioni</th>
-              </tr>
-            </thead>
-            <tbody id="membersTableBody" class="divide-y">
-              <!-- Inseriti dinamicamente -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- MODALE INVITO DIPENDENTE -->
-  <div id="inviteModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
-      <h3 class="font-bold text-lg text-slate-800">Invita Nuovo Membro</h3>
-      <div>
-        <label class="block text-xs font-semibold mb-1 uppercase">Email Dipendente</label>
-        <input type="email" id="inviteEmail" required placeholder="dipendente@azienda.it" class="w-full border rounded-lg p-2 text-sm">
-      </div>
-      <div>
-        <label class="block text-xs font-semibold mb-1 uppercase">Ruolo Assegnato</label>
-        <select id="inviteRole" class="w-full border rounded-lg p-2 text-sm">
-          <option value="user">User (Dipendente)</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-      <div class="space-y-2 border-t pt-3">
-        <label class="block text-xs font-semibold uppercase">Permessi Iniziali</label>
-        <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" id="inviteCanClock" checked class="rounded"> Abilitato alla Timbratura
-        </label>
-        <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" id="inviteCanEdit" class="rounded"> Può modificare presenze passate
-        </label>
-        <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" id="inviteCanLeave" checked class="rounded"> Può inviare richieste permessi
-        </label>
-      </div>
-      <div class="flex justify-end gap-2 pt-4">
-        <button onclick="toggleInviteModal()" class="px-4 py-2 border rounded-lg text-sm">Annulla</button>
-        <button onclick="sendInvite()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Invia Invito</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // CONFIGURAZIONE SUPABASE (Sostituisci con le tue chiavi Supabase)
-    const SUPABASE_URL = 'https://TUO-PROGETTO.supabase.co';
-    const SUPABASE_ANON_KEY = 'LA-TUA-CHIAVE-ANONIMA';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    let currentUser = null;
-    let currentProfile = null;
-
-    async function initApp() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        await loadProfile();
-        showApp();
-      }
-    }
-
-    async function handleLogin(e) {
-      e.preventDefault();
-      const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return alert('Errore di accesso: ' + error.message);
-
-      currentUser = data.user;
-      await loadProfile();
-      showApp();
-    }
-
-    async function loadProfile() {
-      const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-      currentProfile = data;
-
-      document.getElementById('userEmail').innerText = currentProfile.email;
-      document.getElementById('userBadge').innerText = currentProfile.role;
-
-      // Gestione visibilità permessi timbratura
-      document.getElementById('btnClockIn').disabled = !currentProfile.can_clock_in;
-      document.getElementById('btnClockOut').disabled = !currentProfile.can_clock_in;
-      document.getElementById('clockStatus').innerText = currentProfile.can_clock_in 
-        ? 'Stato: Abilitato a registrare le presenze.' 
-        : 'Stato: Non sei abilitato alla timbratura (Contatta l\'admin).';
-
-      // Gestione pannello admin/owner
-      if (['owner', 'admin'].includes(currentProfile.role)) {
-        document.getElementById('adminPanel').classList.remove('hidden');
-        document.getElementById('notificationsPanel').classList.remove('hidden');
-        loadMembers();
-        loadNotifications();
-      }
-    }
-
-    function showApp() {
-      document.getElementById('loginSection').classList.add('hidden');
-      document.getElementById('userInfo').classList.remove('hidden');
-      document.getElementById('appSection').classList.remove('hidden');
-    }
-
-    async function logout() {
-      await supabase.auth.signOut();
-      window.location.reload();
-    }
-
-    // AZIONE TIMBRATURA
-    async function clockAction(type) {
-      if (!currentProfile.can_clock_in) return alert('Permesso non concesso.');
-
-      const { error } = await supabase.from('clock_records').insert([{
-        user_id: currentUser.id,
-        type: type
-      }]);
-
-      if (error) alert('Errore nella registrazione: ' + error.message);
-      else alert(`Timbratura di ${type === 'in' ? 'ENTRATA' : 'USCITA'} registrata!`);
-    }
-
-    // RICHIEDI PERMESSO / NOTIFICA PER ADMIN
-    async function handleLeaveRequest(e) {
-      e.preventDefault();
-      if (!currentProfile.can_request_leave) return alert('Non hai i permessi per inviare richieste.');
-
-      const { error } = await supabase.from('leave_requests').insert([{
-        user_id: currentUser.id,
-        request_type: document.getElementById('reqType').value,
-        start_time: document.getElementById('reqStart').value,
-        end_time: document.getElementById('reqEnd').value,
-        reason: document.getElementById('reqReason').value
-      }]);
-
-      if (error) alert('Errore invio richiesta: ' + error.message);
-      else alert('Richiesta inviata all\'amministratore con successo!');
-    }
-
-    // CARICA NOTIFICHE PER ADMIN / OWNER
-    async function loadNotifications() {
-      const { data } = await supabase.from('leave_requests')
-        .select('*, profiles(email, full_name)')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-      const list = document.getElementById('notificationsList');
-      document.getElementById('unreadCount').innerText = `${data.length} Nuove`;
-      list.innerHTML = '';
-
-      if (data.length === 0) {
-        list.innerHTML = '<p class="text-sm text-slate-500">Nessuna nuova notifica in sospeso.</p>';
-        return;
-      }
-
-      data.forEach(req => {
-        list.innerHTML += `
-          <div class="bg-white p-3 rounded-lg border flex justify-between items-center text-sm shadow-sm">
-            <div>
-              <span class="font-bold text-slate-800">${req.profiles.full_name || req.profiles.email}</span>: 
-              <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-xs font-semibold">${req.request_type}</span>
-              <p class="text-xs text-slate-500 mt-1">${new Date(req.start_time).toLocaleString()} - ${new Date(req.end_time).toLocaleString()}</p>
-              ${req.reason ? `<p class="text-xs text-slate-600 italic">"${req.reason}"</p>` : ''}
-            </div>
-            <div class="flex gap-2">
-              <button onclick="updateRequest('${req.id}', 'approved')" class="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-emerald-700">Approva</button>
-              <button onclick="updateRequest('${req.id}', 'rejected')" class="bg-rose-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-rose-700">Rifiuta</button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    async function updateRequest(id, status) {
-      await supabase.from('leave_requests').update({ status, read_by_admin: true }).eq('id', id);
-      loadNotifications();
-    }
-
-    // GESTIONE TABELLA MEMBRI & PERMESSI
-    async function loadMembers() {
-      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: true });
-      const tbody = document.getElementById('membersTableBody');
-      tbody.innerHTML = '';
-
-      data.forEach(m => {
-        tbody.innerHTML += `
-          <tr>
-            <td class="p-3 font-medium">${m.email}</td>
-            <td class="p-3"><span class="uppercase text-xs font-bold">${m.role}</span></td>
-            <td class="p-3">
-              <input type="checkbox" ${m.can_clock_in ? 'checked' : ''} onchange="updatePermission('${m.id}', 'can_clock_in', this.checked)">
-            </td>
-            <td class="p-3">
-              <input type="checkbox" ${m.can_edit_clocks ? 'checked' : ''} onchange="updatePermission('${m.id}', 'can_edit_clocks', this.checked)">
-            </td>
-            <td class="p-3">
-              <input type="checkbox" ${m.can_request_leave ? 'checked' : ''} onchange="updatePermission('${m.id}', 'can_request_leave', this.checked)">
-            </td>
-            <td class="p-3 text-right">
-              <button onclick="sendWhatsAppInvite('${m.email}')" class="text-emerald-600 hover:text-emerald-700 text-xs font-bold"><i class="fa-brands fa-whatsapp"></i> Invia Link</button>
-            </td>
-          </tr>
-        `;
-      });
-    }
-
-    async function updatePermission(userId, field, value) {
-      const updates = {};
-      updates[field] = value;
-      await supabase.from('profiles').update(updates).eq('id', userId);
-    }
-
-    function toggleInviteModal() {
-      document.getElementById('inviteModal').classList.toggle('hidden');
-    }
-
-    // INVITO DIPENDENTE A COSTO ZERO
-    async function sendInvite() {
-      const email = document.getElementById('inviteEmail').value;
-      const role = document.getElementById('inviteRole').value;
-      const can_clock_in = document.getElementById('inviteCan
+/* Modalità condivisa: dati online su Supabase, accesso solo su invito */
+const CFG=window.PTP_CFG||{},H0=location.hash,NEEDPW=/type=(invite|recovery)/.test(H0);
+if(typeof claude==='undefined'&&CFG.url&&window.supabase){(()=>{
+const sb=supabase.createClient(CFG.url,CFG.key),rid=()=>crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2),sd=(id,v)=>({id,exists:v!=null,data:()=>v}),subs=[];
+const ck=r=>{if(r.error)throw new Error(r.error.message);return r.data},w=async p=>{const r=ck(await p);subs.forEach(f=>f());return r};
+const MAPS={staff:{t:'profiles',m:{email:'email',name:'name',role:'role',calEmail:'cal_email',calSync:'cal_sync',canPunch:'can_punch',canEditPast:'can_edit_past',canRequest:'can_request',active:'active',joined:'joined',created:'created_at'}},
+ notifs:{t:'notifications',m:{kind:'kind',ref:'ref',uid:'from_user',to:'to_user',msg:'message',read:'read',created:'created_at'}}};
+const toDoc=(r,m)=>{const d={};for(const k in m){const v=r[m[k]];if(v!=null)d[k]=k==='created'?+new Date(v):v}return d};
+const toRow=(d,m)=>{const r={};for(const k in d)if(m[k]&&k!=='created')r[m[k]]=d[k];return r};
+const one=async(c,id)=>ck(await sb.from('docs').select('data').eq('coll',c).eq('id',id).maybeSingle());
+const dr=(c,id)=>({id,get:async()=>sd(id,(await one(c,id))?.data),
+ set:async v=>{const r=await one(c,id);return w(r?sb.from('docs').update({data:v}).eq('coll',c).eq('id',id):sb.from('docs').insert({coll:c,id,data:v}))},
+ update:async v=>{const r=await one(c,id);if(!r)throw new Error('Documento inesistente');return w(sb.from('docs').update({data:{...r.data,...v}}).eq('coll',c).eq('id',id))},
+ delete:async()=>w(sb.from('docs').delete().eq('coll',c).eq('id',id))});
+const tdr=(c,id)=>{const{t,m}=MAPS[c];return{id,get:async()=>{const r=ck(await sb.from(t).select('*').eq('id',id).maybeSingle());return sd(id,r?toDoc(r,m):undefined)},
+ set:async v=>{const r=ck(await sb.from(t).select('id').eq('id',id).maybeSingle());if(!r)throw new Error('Profilo non trovato: chiedi un invito al tuo amministratore.');const x=toRow(v,m);return Object.keys(x).length?w(sb.from(t).update(x).eq('id',id)):0},
+ update:async v=>{const x=toRow(v,m);return Object.keys(x).length?w(sb.from(t).update(x).eq('id',id)):0},
+ delete:async()=>w(sb.from(t).delete().eq('id',id))}};
+const db={doc:p=>{const[c,id]=p.split('/');return MAPS[c]?tdr(c,id):dr(c,id)},collection:c=>{const T=MAPS[c];return{doc:id=>T?tdr(c,id):dr(c,id||rid()),
+ add:async v=>{if(T)throw new Error('Operazione non consentita');const id=rid();await dr(c,id).set(v);return dr(c,id)},
+ onSnapshot:(f,e)=>{const run=async()=>{try{f({docs:T?ck(await sb.from(T.t).select('*')).map(r=>sd(r.id,toDoc(r,T.m))):ck(await sb.from('docs').select('id,data').eq('coll',c)).map(x=>sd(x.id,x.data))})}catch(x){e&&e(x)}};subs.push(run);run();
+  sb.channel('rt-'+c+rid()).on('postgres_changes',T?{event:'*',schema:'public',table:T.t}:{event:'*',schema:'public',table:'docs',filter:'coll=eq.'+c},run).subscribe();return()=>{}}}}};
+setInterval(()=>subs.forEach(f=>f()),30000);
+const ov=h=>{const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px';m.innerHTML='<div class="card" style="width:100%;max-width:380px">'+h+'</div>';document.body.append(m);return m};
+const setPw=()=>new Promise(res=>{const m=ov('<h2>🔑 Imposta la tua password</h2><label class="f"><span>Nuova password (almeno 6 caratteri)</span><input id="p1" type="password"></label><label class="f"><span>Ripeti la password</span><input id="p2" type="password"></label><p id="lm" class="mu"></p><button class="btn" id="go">Salva e continua</button>'),q=s=>m.querySelector(s),msg=t=>{q('#lm').textContent=t};
+ q('#go').onclick=async()=>{const a=q('#p1').value;if(a.length<6)return msg('Almeno 6 caratteri.');if(a!==q('#p2').value)return msg('Le password non coincidono.');const r=await sb.auth.updateUser({password:a});if(r.error)return msg(r.error.message);m.remove();history.replaceState(null,'',location.pathname);res()}});
+const login=()=>new Promise(res=>{const m=ov('<h2>🔐 Accedi</h2><label class="f"><span>Email</span><input id="le" type="email" autocomplete="username"></label><label class="f"><span>Password</span><input id="lp" type="password" autocomplete="current-password"></label><p id="lm" class="mu"></p><div class="row"><button class="btn" id="li">Accedi</button><button class="btn gh" id="lf">Password dimenticata?</button></div><p class="mu">L\'accesso è solo su invito: chiedi il link al tuo amministratore.</p>'),q=s=>m.querySelector(s),msg=t=>{q('#lm').textContent=t};
+ const er=/error_description=([^&]+)/.exec(H0);if(er)msg(decodeURIComponent(er[1].replace(/\+/g,' '))+' Chiedi un nuovo link.');
+ q('#li').onclick=async()=>{msg('…');const r=await sb.auth.signInWithPassword({email:q('#le').value.trim(),password:q('#lp').value});if(r.error)return msg(r.error.message);m.remove();res(r.data.session)};
+ q('#lf').onclick=async()=>{const e=q('#le').value.trim();if(!e)return msg('Scrivi prima la tua email.');await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin+location.pathname});msg('Se l\'email è registrata riceverai il link per reimpostare la password. In alternativa chiedi un link al tuo amministratore.')}});
+const user={me:async()=>{let s=(await sb.auth.getSession()).data.session;if(NEEDPW&&s)await setPw();if(!s)s=await login();const u=s.user;
+ document.querySelector('header span').append(Object.assign(document.createElement('button'),{className:'badge',textContent:'Esci',style:'border:0;color:#fff;cursor:pointer',onclick:async()=>{await sb.auth.signOut();location.reload()}}));
+ return{id:u.id,email:u.email,name:u.user_metadata?.name||''}},isOwner:async()=>false};
+const invite=async b=>{const{data,error}=await sb.functions.invoke('invite-user',{body:b});if(error){let m=error.message;try{const j=await error.context.json();if(j?.error)m=j.error}catch(e){}throw new Error(m)}if(data?.error)throw new Error(data.error);return data};
+const dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':'text/csv'}));a.download=filename;document.body.append(a);a.click();a.remove();return'saved'}};
+window.claude={use:async n=>({user,db,downloads:dl,invite})[n]||null};
+})()}
+/* Modalità autonoma: dati salvati nel browser di questo dispositivo */
+if(typeof claude==='undefined'){(()=>{
+const mem={},ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
+const load=()=>JSON.parse(ls.get('ptp_db')||'{}'),save=d=>ls.set('ptp_db',JSON.stringify(d)),subs=[],notify=()=>subs.forEach(f=>f()),rid=()=>Math.random().toString(36).slice(2,10);
+const sd=(id,v)=>({id,exists:v!==undefined,data:()=>v});
+const emu=(d,q,id,w)=>{const st=(d.staff||{})[q.uid]||{},who=st.name||st.email||'Un dipendente',lb={ferie:'ferie',permesso:'un permesso',malattia:'malattia',modifica:'la correzione della timbratura'}[q.type]||q.type,per=q.from===q.to?'il '+q.from:'dal '+q.from+' al '+q.to;
+ (d.notifs=d.notifs||{})[rid()]=w==='new'?{kind:'req',ref:id,uid:q.uid,msg:who+' ha richiesto '+lb+' '+per,read:false,created:Date.now()}:{kind:'decision',ref:id,uid:q.uid,to:q.uid,msg:'La tua richiesta di '+lb+' ('+q.from+') è stata '+(q.status==='approved'?'approvata':'rifiutata'),read:false,created:Date.now()}};
+const dr=(c,id)=>({id,get:async()=>sd(id,(load()[c]||{})[id]),
+ set:async v=>{const d=load(),nw=!(d[c]||{})[id];(d[c]=d[c]||{})[id]=v;if(c==='reqs'&&nw&&v.status==='pending')emu(d,v,id,'new');save(d);notify()},
+ update:async v=>{const d=load(),o=(d[c]||{})[id];if(!o)throw new Error('Documento inesistente');d[c][id]={...o,...v};if(c==='reqs'&&o.status==='pending'&&v.status&&v.status!=='pending')emu(d,d[c][id],id,'dec');save(d);notify()},
+ delete:async()=>{const d=load();if(d[c])delete d[c][id];save(d);notify()}});
+const db={doc:p=>{const[c,id]=p.split('/');return dr(c,id)},collection:c=>({doc:id=>dr(c,id||rid()),add:async v=>{const id=rid();await dr(c,id).set(v);return dr(c,id)},
+ onSnapshot:f=>{const run=()=>f({docs:Object.entries(load()[c]||{}).map(([id,v])=>sd(id,v))});subs.push(run);run();return()=>{}}})};
+const user={me:async()=>({id:'local',name:'',email:null}),isOwner:async()=>true};
+const dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':'text/csv'}));a.download=filename;document.body.append(a);a.click();a.remove();return'saved'}};
+window.claude={use:async n=>({user,db,downloads:dl})[n]||null};
+})()}
+const $=s=>document.querySelector(s);
+const E=(t,a,...c)=>{const e=document.createElement(t);for(const k in a||{}){const v=a[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e[k]=v;else if(v!=null&&v!==false)e.setAttribute(k,v===true?'':v)}for(const x of c.flat())if(x!=null&&x!==false)e.append(x.nodeType?x:document.createTextNode(x));return e};
+const pad=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),hm=d=>pad(d.getHours())+':'+pad(d.getMinutes());
+const mn=t=>{const[a,b]=t.split(':');return+a*60+ +b},f1=n=>(Math.round(n*100)/100).toString().replace('.',',');
+const MESI=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const TL={ferie:'Ferie',malattia:'Malattia',permesso:'Permesso',modifica:'Correzione'},ST={pending:'In attesa',approved:'Approvata',rejected:'Rifiutata'};
+let S={tab:'oggi',m:new Date(),sel:null,day:null,staff:{},days:{},reqs:{},tix:{},settings:{},notifs:{}},db,dl,inv,uid,owner=false,role='user',me;
+const isA=()=>role!=='user',canR=q=>isA()||(q.uid===uid&&q.status==='pending'),P=k=>isA()||(S.staff[uid]||{})[k]!==false,nm=id=>S.staff[id]?.name||S.staff[id]?.email||'Utente';
+const cf=()=>{const c=S.settings.company||{};return{name:c.name||'',in:c.in||'09:00',out:c.out||'18:00',pause:c.pause??60,ot:c.ot??30}},std=()=>Math.max(1,(mn(cf().out)-mn(cf().in)-cf().pause)/60),ot=h=>h-std()>=cf().ot/60?h-std():0,PAUSES=[[0,'Nessuna'],[30,'30 minuti'],[45,'45 minuti'],[60,'1 ora'],[90,'1 ora e 30']],net=d=>d&&d.in&&d.out?Math.max(0,(mn(d.out)-mn(d.in)-(+d.pause||0))/60):0;
+const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t.h);t.h=setTimeout(()=>t.style.display='none',3000)};
+const reqsOn=(u,dt,m)=>Object.values(S.reqs).filter(q=>q.uid===u&&q.status!=='rejected'&&(m||q.type!=='modifica')&&q.from<=dt&&dt<=q.to);
+const tixOn=(u,dt)=>Object.values(S.tix).filter(t=>t.uid===u&&t.due===dt);
+const err=e=>toast('Errore: '+(e?.message||e));
+const run=async p=>{try{await p}catch(e){err(e)}};
+function calc(u,y,m){const r={w:0,o:0,p:0,f:0,s:0};const n=new Date(y,m+1,0).getDate();
+ for(let i=1;i<=n;i++){const d=S.days[u+'_'+ymd(new Date(y,m,i))];if(d){const h=net(d);r.w+=Math.min(h,std());r.o+=ot(h)}}
+ for(const q of Object.values(S.reqs)){if(q.uid!==u||q.status!=='approved'||q.type==='modifica')continue;
+  for(let t=new Date(q.from+'T12:00');ymd(t)<=q.to;t.setDate(t.getDate()+1)){if(t.getFullYear()!==y||t.getMonth()!==m||t.getDay()%6===0)continue;
+   r[q.type==='ferie'?'f':q.type==='malattia'?'s':'p']+=q.type==='permesso'?+q.hours||0:std()}}
+ return r}
+/* modali e form */
+const close=()=>$('#ov')?.remove();
+function modal(t,body,btns){close();document.body.append(E('div',{class:'ov',id:'ov',onclick:e=>{if(e.target.id==='ov')close()}},E('div',{class:'md'},E('h3',{},t),body,E('div',{class:'row end'},btns))))}
+const fld=(l,i)=>E('label',{class:'f'},E('span',{},l),i);
+const opts=(a,v)=>a.map(([k,l])=>E('option',{value:k,selected:String(k)===String(v)},l));
+const cancel=()=>E('button',{class:'btn gh',onclick:close},'Annulla');
+/* azioni */
+const today=()=>ymd(new Date());
+const dref=(u,dt)=>db.doc('days/'+u+'_'+dt);
+function punchIn(){if(!P('canPunch')){close();return toast('Non sei abilitato alla timbratura')}run(dref(uid,today()).set({uid,date:today(),in:hm(new Date()),out:'',pause:0})).then(()=>toast('Entrata registrata'));close()}
+function outModal(def){if(!P('canPunch'))return toast('Non sei abilitato alla timbratura');const d=S.days[uid+'_'+today()];if(!d?.in)return toast('Prima timbra l\'entrata');const o=E('input',{type:'time',value:def}),p=E('select',{},opts(PAUSES,d.pause||cf().pause));
+ modal('Timbra uscita',E('div',{},fld('A che ora sei uscito/a?',o),E('div',{style:'margin-bottom:10px'},E('button',{class:'btn gh sm',onclick:()=>{o.value=hm(new Date())}},'Imposta l\'ora attuale')),fld('Pausa effettuata',p)),
+ [cancel(),E('button',{class:'btn er',onclick:()=>{if(!o.value||mn(o.value)<=mn(d.in))return toast('L\'uscita deve essere dopo l\'entrata ('+d.in+')');run(dref(uid,today()).update({out:o.value,pause:+p.value}));toast('Uscita registrata');close()}},'Salva uscita')])}
+const punchOut=()=>outModal(hm(new Date()));
+function editDay(u,dt){const d=S.days[u+'_'+dt]||{};const i=E('input',{type:'time',value:d.in||''}),o=E('input',{type:'time',value:d.out||''}),p=E('select',{},opts(PAUSES,String(d.pause??cf().pause)));
+ modal('Presenza '+dt+' · '+nm(u),E('div',{},fld('Entrata',i),fld('Uscita',o),fld('Pausa',p)),[cancel(),d.in?E('button',{class:'btn er',onclick:()=>{run(dref(u,dt).delete());close()}},'Elimina'):null,E('button',{class:'btn',onclick:()=>{if(!i.value)return toast('Inserisci l\'entrata');run(dref(u,dt).set({uid:u,date:dt,in:i.value,out:o.value,pause:+p.value}));close()}},'Salva')])}
+function reqModal(q){const u=E('select',{},opts(Object.entries(S.staff).map(([k])=>[k,nm(k)]),q?.uid||uid)),t=E('select',{},opts(P('canRequest')?[['malattia','Malattia (registrazione immediata)'],['ferie','Ferie'],['permesso','Permesso']]:[['malattia','Malattia (registrazione immediata)']],P('canRequest')?q?.type||'ferie':'malattia'));
+ const a=E('input',{type:'date',value:q?.from||today()}),b=E('input',{type:'date',value:q?.to||today()}),h=E('input',{type:'number',min:.5,max:8,step:.5,value:q?.hours||2}),n=E('textarea',{rows:2},q?.note||'');
+ modal(q?'Modifica richiesta':'Nuova richiesta',E('div',{},P('canRequest')?null:E('p',{class:'mu'},'Non sei abilitato a richiedere ferie e permessi: puoi solo segnalare una malattia.'),isA()?fld('Dipendente',u):null,fld('Tipo',t),fld('Dal',a),fld('Al',b),fld('Ore al giorno (solo permesso)',h),fld('Note / certificato',n)),[cancel(),E('button',{class:'btn',onclick:()=>{if(b.value<a.value||!a.value)return toast('Date non valide');const tg=isA()?u.value:uid;
+  const ok=t.value==='malattia'||role==='super'||tg!==uid;const dat={uid:tg,type:t.value,from:a.value,to:b.value,hours:+h.value,note:n.value,status:q&&tg!==uid?q.status:ok?'approved':'pending'};run(q?db.doc('reqs/'+q.id).update(dat):db.collection('reqs').add({...dat,by:uid,created:Date.now()}));close();toast(q?'Modifica salvata':ok?'Registrata':'Richiesta inviata')}},'Invia')])}
+async function shrink(f){const im=await createImageBitmap(f),s=Math.min(1,720/Math.max(im.width,im.height)),c=E('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.6)}
+function tixModal(x){const t=E('input',{value:x?.title||''}),d=E('textarea',{rows:3},x?.desc||''),due=E('input',{type:'date',value:x?.due||''}),st=E('select',{},opts([['Fare','Da fare'],['Attesa','In attesa'],['Fatto','Fatto']],x?.status||'Fare')),tm=E('input',{type:'time',value:x?.time||''}),rm=E('select',{},opts([[0,'Nessun promemoria'],[15,'15 minuti prima'],[60,'1 ora prima'],[1440,'1 giorno prima']],x?.rem??60)),ph=E('input',{type:'file',accept:'image/*',capture:'environment'});
+ modal(x?'Modifica ticket':'Nuovo ticket',E('div',{},fld('Titolo',t),fld('Descrizione',d),fld('Scadenza / intervento',due),fld('Ora',tm),fld('Promemoria calendario',rm),fld('Stato',st),fld(x?.photo?'Foto (vuoto = mantieni quella attuale)':'Foto',ph)),[cancel(),E('button',{class:'btn',onclick:async()=>{if(!t.value.trim())return toast('Inserisci un titolo');let photo=x?.photo||'';try{if(ph.files[0])photo=await shrink(ph.files[0])}catch(e){return err(e)}
+  const dat={title:t.value.trim(),desc:d.value,due:due.value,status:st.value,photo,time:tm.value,rem:+rm.value};run(x?db.doc('tix/'+x.id).update(dat):db.collection('tix').add({...dat,uid,created:Date.now()}));close();toast('Ticket salvato');if(S.staff[uid]?.calSync&&dat.due)setTimeout(()=>calModal({...dat,created:x?.created||Date.now()}),300)}},'Salva')])}
+function ask(msg,fn){modal('Conferma',E('p',{},msg),[cancel(),E('button',{class:'btn er',onclick:()=>{close();fn()}},'Elimina')])}
+const showPh=src=>modal('Foto',E('img',{src,style:'width:100%;border-radius:10px'}),[cancel()]);
+function csv(rows,fn){const x=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');if(!dl)return toast('Download non disponibile');dl.save({filename:fn,data:'\ufeff'+x}).catch(()=>{})}
+/* viste */
+const pick=()=>{if(!isA())return null;const s=E('select',{class:'sel',onchange:()=>{S.sel=s.value;render()}},opts(Object.keys(S.staff).map(k=>[k,nm(k)]),S.sel||uid));return s};
+const mnav=()=>E('div',{class:'row sp',style:'margin-bottom:10px'},E('button',{class:'btn gh sm',onclick:()=>{S.m=new Date(S.m.getFullYear(),S.m.getMonth()-1,1);render()}},'◀'),E('b',{},MESI[S.m.getMonth()]+' '+S.m.getFullYear()),E('button',{class:'btn gh sm',onclick:()=>{S.m=new Date(S.m.getFullYear(),S.m.getMonth()+1,1);render()}},'▶'));
+const stat=(l,v)=>E('div',{class:'stat'},E('span',{class:'mu'},l),E('b',{},v));
+function vOggi(){const n=new Date(),d=S.days[uid+'_'+today()];
+ const ab=reqsOn(uid,today()).filter(q=>q.status==='approved')[0];
+ return E('div',{},E('div',{class:'card hero'},E('div',{class:'mu'},n.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})),E('div',{class:'clk',id:'clk'},hm(n)),
+  ab?E('div',{class:'tag '+ab.type,style:'background:var(--'+(ab.type==='ferie'?'fe':ab.type==='malattia'?'ma':'pe')+')'},'Oggi: '+TL[ab.type]):null,
+  E('div',{class:'row'},stat('Entrata',d?.in||'--:--'),stat('Uscita',d?.out||'--:--'),stat('Ore nette',d?.out?f1(net(d)):'—')),
+  P('canPunch')?null:E('p',{class:'mu'},'La timbratura non è abilitata per il tuo profilo. Contatta un amministratore.'),E('div',{class:'row'},E('button',{class:'btn ok',disabled:!!d?.in||!P('canPunch'),onclick:punchIn},'🟢 Timbra entrata'),E('button',{class:'btn er',disabled:!d?.in||!!d?.out||!P('canPunch'),onclick:punchOut},'🔴 Timbra uscita'))),
+  E('div',{class:'card'},E('b',{},'🔔 Promemoria'),E('p',{class:'mu'},'Se all\'orario di entrata ('+cf().in+') non hai timbrato, e all\'orario di uscita ('+cf().out+') non hai chiuso la giornata, l\'app ti avvisa con un popup e ti chiede a che ora.'),
+   typeof Notification!=='undefined'&&Notification.permission==='default'?E('button',{class:'btn gh sm',onclick:()=>Notification.requestPermission().then(render)},'Attiva notifiche del dispositivo'):null,
+   E('button',{class:'btn gh sm',onclick:()=>checkMissing()||toast('Nessun giorno mancante ✅')},'Controlla giorni mancanti'),' ',E('button',{class:'btn gh sm',onclick:()=>remind(true)},'Prova popup'),' ',E('button',{class:'btn gh sm',onclick:()=>emailModal()},'👤 Profilo e calendario')))}
+function vCal(){const u=S.sel||uid,y=S.m.getFullYear(),mo=S.m.getMonth(),first=(new Date(y,mo,1).getDay()+6)%7,n=new Date(y,mo+1,0).getDate(),g=E('div',{class:'cal'});
+ ['L','M','M','G','V','S','D'].forEach(x=>g.append(E('b',{},x)));for(let i=0;i<first;i++)g.append(E('i'));
+ for(let i=1;i<=n;i++){const dt=ymd(new Date(y,mo,i)),d=S.days[u+'_'+dt],c=E('div',{class:'cell'+(dt===S.day?' on':'')+(dt===today()?' today':''),onclick:()=>{S.day=dt;render()}},E('span',{},i));
+  if(d?.in)c.append(E('em',{},d.out?f1(net(d))+'h':'in '+d.in));
+  reqsOn(u,dt).forEach(q=>c.append(E('em',{class:q.type+(q.status==='pending'?' pn':'')},TL[q.type].slice(0,5))));
+  const k=tixOn(u,dt).length;if(k)c.append(E('em',{class:'tk'},'🎫'+k));g.append(c)}
+ let det=null;if(S.day){const dt=S.day,d=S.days[u+'_'+dt];det=E('div',{class:'card'},E('h2',{},new Date(dt+'T12:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})),
+  E('p',{},d?.in?`🕘 ${d.in} → ${d.out||'…'} · pausa ${d.pause||0} min · ${f1(net(d))} h`:'Nessuna timbratura'),
+  ...reqsOn(u,dt).map(q=>E('p',{},`📝 ${TL[q.type]} (${ST[q.status]})${q.note?' – '+q.note:''} `,canR(q)&&q.type!=='modifica'?E('button',{class:'btn gh sm',onclick:()=>reqModal(q)},'✏️ Modifica'):null,' ',canR(q)?E('button',{class:'btn er sm',onclick:()=>ask(TL[q.type]+(q.from===q.to?'':' dal '+q.from+' al '+q.to)+': eliminare?',()=>run(db.doc('reqs/'+q.id).delete()))},'🗑 Elimina'):null)),
+  ...tixOn(u,dt).map(t=>E('p',{},'🎫 '+t.title+' · '+t.status)),isA()?E('button',{class:'btn gh sm',onclick:()=>editDay(u,dt)},'✏️ Modifica presenza'):null,' ',d&&isA()?E('button',{class:'btn er sm',onclick:()=>ask('Eliminare la timbratura del '+dt+'?',()=>run(dref(u,dt).delete()))},'🗑 Elimina timbratura'):null)}
+ return E('div',{},pick(),E('div',{class:'card'},mnav(),g),det)}
+function vReq(){const l=Object.values(S.reqs).filter(q=>isA()||q.uid===uid).sort((a,b)=>b.created-a.created);
+ return E('div',{},E('div',{class:'row sp'},E('h2',{},'Ferie, permessi e malattia'),E('button',{class:'btn sm',onclick:()=>reqModal()},'+ Nuova')),
+  ...l.map(q=>E('div',{class:'card'},E('div',{class:'row sp'},E('b',{},(isA()?nm(q.uid)+' · ':'')+TL[q.type]),E('span',{class:'tag '+q.status},ST[q.status])),
+   E('div',{class:'mu'},q.from===q.to?q.from:q.from+' → '+q.to,q.type==='permesso'?' · '+q.hours+' h/giorno':q.type==='modifica'?(q.off?' · non lavorato':' · '+q.in+' → '+(q.out||'…')+' · pausa '+(q.pause||0)+' min'):''),q.note?E('div',{},q.note):null,
+   E('div',{class:'row',style:'margin-top:8px'},isA()&&q.status==='pending'?[E('button',{class:'btn ok sm',onclick:()=>decide(q,'approved')},'✔ Approva'),E('button',{class:'btn er sm',onclick:()=>decide(q,'rejected')},'✖ Rifiuta')]:null,
+    canR(q)&&q.type!=='modifica'?E('button',{class:'btn gh sm',onclick:()=>reqModal(q)},'✏️ Modifica'):null,canR(q)?E('button',{class:'btn gh sm',onclick:()=>ask('Eliminare questa richiesta?',()=>run(db.doc('reqs/'+q.id).delete()))},'🗑'):null))),
+  l.length?null:E('div',{class:'card mu'},'Nessuna richiesta.'))}
+function vTix(){const l=Object.values(S.tix).filter(t=>isA()||t.uid===uid).sort((a,b)=>(a.due||'9')<(b.due||'9')?-1:1);
+ return E('div',{},E('div',{class:'row sp'},E('h2',{},'Ticket & interventi'),E('button',{class:'btn sm',onclick:()=>tixModal()},'+ Nuovo')),
+  ...[['Fare','🔵 Da fare'],['Attesa','🟡 In attesa'],['Fatto','🟢 Fatto']].map(([s,lb])=>{const x=l.filter(t=>t.status===s);return E('div',{},E('b',{},lb+' '+x.length),
+   ...x.map(t=>E('div',{class:'card',style:'margin-top:8px'},E('div',{class:'row sp'},E('b',{},t.title),E('span',{class:'mu'},t.due?'📅 '+t.due+(t.time?' '+t.time:''):'')),isA()?E('div',{class:'mu'},nm(t.uid)):null,t.desc?E('div',{},t.desc):null,
+    t.photo?E('img',{class:'ph',src:t.photo,onclick:()=>showPh(t.photo)}):null,
+    E('div',{class:'row'},['Fare','Attesa','Fatto'].filter(k=>k!==s).map(k=>E('button',{class:'btn gh sm',onclick:()=>run(db.doc('tix/'+t.id).update({status:k}))},'→ '+{Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'}[k])),
+     S.staff[uid]?.calSync&&t.due?E('button',{class:'btn gh sm',onclick:()=>calModal(t)},'📅 Calendario'):null,isA()||t.uid===uid?E('button',{class:'btn gh sm',onclick:()=>tixModal(t)},'✏️ Modifica'):null,isA()||t.uid===uid?E('button',{class:'btn gh sm',onclick:()=>ask('Eliminare il ticket?',()=>run(db.doc('tix/'+t.id).delete()))},'🗑 Elimina'):null))))}))}
+function vRep(){const u=S.sel||uid,y=S.m.getFullYear(),mo=S.m.getMonth(),r=calc(u,y,mo),n=new Date(y,mo+1,0).getDate(),rows=[];
+ for(let i=1;i<=n;i++){const dt=ymd(new Date(y,mo,i)),d=S.days[u+'_'+dt];if(d)rows.push([dt,d.in,d.out||'',d.pause||0,f1(net(d)),f1(Math.min(net(d),std())),f1(ot(net(d)))])}
+ const tot=[['Lavoro',r.w],['Straordinario',r.o],['Permesso',r.p],['Ferie',r.f],['Malattia',r.s]];
+ const team=isA()?Object.keys(S.staff).map(k=>{const c=calc(k,y,mo);return[nm(k),S.staff[k].email||'',f1(c.w),f1(c.o),f1(c.p),f1(c.f),f1(c.s)]}):[];
+ const th=a=>E('tr',{},a.map(x=>E('th',{},x))),td=a=>E('tr',{},a.map(x=>E('td',{},x)));
+ return E('div',{},pick(),E('div',{class:'card'},mnav(),E('div',{class:'row'},tot.map(([l,v])=>stat(l,f1(v)+' h'))),
+  E('div',{class:'row',style:'margin-top:10px'},E('button',{class:'btn sm',onclick:()=>csv([['Dipendente',nm(u)],['Mese',MESI[mo]+' '+y],[],['Data','Entrata','Uscita','Pausa min','Ore nette','Ore lavoro','Straordinario'],...rows,[],['Totali ore'],...tot.map(([l,v])=>[l,f1(v)])],`report-${y}-${pad(mo+1)}-${nm(u)}.csv`)},'📥 Esporta CSV'))),
+  E('div',{class:'card'},E('h2',{},'Presenze del mese'),E('table',{},th(['Data','Entr.','Usc.','Pausa','Nette','Lavoro','Straord.']),rows.map(td),rows.length?null:E('tr',{},E('td',{colspan:7},'Nessuna presenza.')))),
+  isA()?E('div',{class:'card'},E('div',{class:'row sp'},E('h2',{},'Riepilogo team (ore)'),E('button',{class:'btn gh sm',onclick:()=>csv([['Dipendente','Email','Lavoro','Straordinario','Permesso','Ferie','Malattia'],...team],`team-${y}-${pad(mo+1)}.csv`)},'📥 CSV team')),
+   E('table',{},th(['Dipendente','Lavoro','Straord.','Perm.','Ferie','Mal.']),team.map(t=>td([t[0],...t.slice(2)])))):null)}
+function vTeam(){const ids=Object.keys(S.staff).sort((a,b)=>nm(a).localeCompare(nm(b)));
+ const canEd=(k,s)=>(role==='super'&&k!==uid)||(role==='admin'&&s.role==='user');
+ const tg=(k,f,l,s)=>E('label',{class:'tgl'},E('input',{type:'checkbox',checked:s[f]!==false,disabled:!canEd(k,s),onchange:e=>run(db.doc('staff/'+k).update({[f]:e.target.checked}))}),l);
+ return E('div',{},E('div',{class:'card'},E('div',{class:'row sp'},E('b',{},'🏢 '+(cf().name||'Ditta non impostata')),role==='super'?E('button',{class:'btn gh sm',onclick:()=>setModal()},'⚙️ Impostazioni'):null),E('div',{class:'mu'},'Entrata '+cf().in+' · Uscita '+cf().out+' · Pausa '+cf().pause+' min · Straordinario da '+cf().ot+' min')),
+  E('div',{class:'row sp'},E('h2',{},'Team ('+ids.length+')'),inv?E('button',{class:'btn sm',onclick:()=>inviteModal()},'✉️ Invita'):null),
+  ...ids.map(k=>{const s=S.staff[k],st=s.active===false?['Disattivato','rejected']:s.joined===false?['Invitato','pending']:['Attivo','approved'];
+   return E('div',{class:'card'},E('div',{class:'row sp'},E('div',{},E('b',{},nm(k)),E('div',{class:'mu'},s.email||'')),E('div',{class:'row'},E('span',{class:'tag '+st[1]},st[0]),
+     role==='super'&&k!==uid&&s.role!=='super'?E('select',{style:'width:auto',onchange:e=>run(db.doc('staff/'+k).update({role:e.target.value}))},opts([['user','Utente'],['admin','Admin']],s.role||'user')):E('span',{class:'tag'},s.role==='super'?'Proprietario':s.role==='admin'?'Admin':'Utente'))),
+    s.role==='user'?E('div',{class:'perm'},tg(k,'canPunch','Può timbrare',s),tg(k,'canEditPast','Può modificare le timbrature passate',s),tg(k,'canRequest','Può richiedere ferie e permessi',s),tg(k,'active','Account attivo',s)):null,
+    inv&&k!==uid&&canEd(k,s)?E('div',{class:'row',style:'margin-top:8px'},E('button',{class:'btn gh sm',onclick:()=>inviteModal(s)},'🔗 Link di accesso')):null)}),
+  inv?null:E('p',{class:'mu'},'Gli inviti funzionano solo nella versione online con Supabase.'))}
+function inviteModal(pre){const em=E('input',{type:'email',value:pre?.email||'',readonly:!!pre,placeholder:'email@dipendente.it'}),nI=E('input',{value:pre?.name||'',readonly:!!pre,placeholder:'Nome e cognome'}),ro=E('select',{},opts(role==='super'?[['user','Utente'],['admin','Admin']]:[['user','Utente']],'user')),mo=E('select',{},opts([['link','Genera link (da inviare su WhatsApp)'],['email','Invia email di invito']],'link'));
+ const ck=v=>E('input',{type:'checkbox',checked:v}),c1=ck(true),c2=ck(false),c3=ck(true);
+ modal(pre?'Link di accesso per '+nm(pre.id):'Invita un dipendente',E('div',{},fld('Email',em),pre?null:fld('Nome e cognome',nI),pre?E('p',{class:'mu'},'Genera un nuovo link per impostare o reimpostare la password.'):E('div',{},fld('Ruolo',ro),E('label',{class:'tgl'},c1,'Può timbrare'),E('label',{class:'tgl'},c2,'Può modificare le timbrature passate'),E('label',{class:'tgl'},c3,'Può richiedere ferie e permessi'),fld('Come inviare l\'invito',mo))),
+  [cancel(),E('button',{class:'btn',onclick:async ev=>{const b=ev.target;if(!/^\S+@\S+\.\S+$/.test(em.value))return toast('Email non valida');b.disabled=true;
+   try{const r=await inv({email:em.value.trim(),name:nI.value.trim(),role:ro.value,mode:pre?'link':mo.value,canPunch:c1.checked,canEditPast:c2.checked,canRequest:c3.checked,redirectTo:location.origin+location.pathname});showInvite(r,em.value.trim(),nI.value.trim())}catch(e){b.disabled=false;err(e)}}},pre?'Genera link':'Invita')])}
+function showInvite(r,email,name){if(!r.link){close();return toast('Invito inviato a '+email)}
+ const msg='Ciao'+(name?' '+name:'')+', ecco il tuo accesso a '+(cf().name||'Presenze')+': '+r.link,i=E('input',{readonly:true,value:r.link,onclick:e=>e.target.select()});
+ modal('Link pronto',E('div',{},E('p',{},'Invia questo link a '+email+'. Al primo accesso imposta la password e trova il profilo già configurato. Il link è personale e a uso singolo.'),i),
+  [E('button',{class:'btn gh',onclick:()=>{i.select();try{navigator.clipboard.writeText(r.link)}catch(e){document.execCommand('copy')}toast('Link copiato')}},'Copia'),E('a',{class:'btn ok',href:'https://wa.me/?text='+encodeURIComponent(msg),target:'_blank',rel:'noopener',style:'text-decoration:none'},'WhatsApp'),E('button',{class:'btn',onclick:close},'Chiudi')])}
+async function decide(q,st){try{if(st==='approved'&&q.type==='modifica')await dref(q.uid,q.from).set(q.off?{uid:q.uid,date:q.from,off:true}:{uid:q.uid,date:q.from,in:q.in,out:q.out||'',pause:+q.pause||0});
+ await db.doc('reqs/'+q.id).update({status:st});for(const n of Object.values(S.notifs).filter(x=>x.ref===q.id&&!x.to&&!x.read))await db.doc('notifs/'+n.id).update({read:true});toast(st==='approved'?'Approvata':'Rifiutata')}catch(e){err(e)}}
+const myN=()=>Object.values(S.notifs||{}).filter(n=>isA()?!n.to:n.to===uid).sort((a,b)=>b.created-a.created);
+function notifPanel(){const l=myN(),un=l.filter(n=>!n.read).length,box=E('div',{}),again=()=>setTimeout(()=>{if($('#ov h3')?.textContent.startsWith('🔔'))notifPanel()},450);
+ l.slice(0,40).forEach(n=>{const q=S.reqs[n.ref],pend=isA()&&n.kind==='req'&&q?.status==='pending';
+  box.append(E('div',{class:'card',style:'margin-bottom:8px;'+(n.read?'opacity:.7':'border-color:var(--ac)')},E('div',{},n.msg),E('div',{class:'mu'},new Date(n.created).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+(q&&n.kind==='req'?' · '+ST[q.status]:'')),
+   pend&&q.type==='modifica'?E('div',{class:'mu'},(q.off?'Giorno non lavorato':q.in+' → '+(q.out||'…')+' · pausa '+(q.pause||0)+' min')+(q.note?' · '+q.note:'')):(pend&&q.note?E('div',{class:'mu'},q.note):null),
+   E('div',{class:'row',style:'margin-top:8px'},pend?[E('button',{class:'btn ok sm',onclick:async()=>{await decide(q,'approved');again()}},'✔ Approva'),E('button',{class:'btn er sm',onclick:async()=>{await decide(q,'rejected');again()}},'✖ Rifiuta')]:null,!n.read?E('button',{class:'btn gh sm',onclick:async()=>{await run(db.doc('notifs/'+n.id).update({read:true}));again()}},'Segna letta'):null)))});
+ modal('🔔 Notifiche'+(un?' ('+un+' da leggere)':''),l.length?box:E('p',{class:'mu'},'Nessuna notifica.'),[un?E('button',{class:'btn gh',onclick:async()=>{for(const n of l.filter(x=>!x.read))await db.doc('notifs/'+n.id).update({read:true}).catch(()=>{});again()}},'Segna tutte lette'):null,E('button',{class:'btn',onclick:close},'Chiudi')])}
+function render(){if(!uid)return;role=owner?'super':S.staff[uid]?.role||'user';const y=scrollY;
+ $('#who').textContent=nm(uid);{const un=myN().filter(n=>!n.read).length;$('#bell').textContent='🔔'+(un?' '+un:'')}$('header h1').textContent='⏱️ '+(cf().name||'Presenze & Ticket Pro');$('#role').textContent={super:'Proprietario',admin:'Admin',user:'Utente'}[role];
+ const tabs=[['oggi','⏱️','Oggi'],['cal','📅','Calendario'],['req','📝','Richieste'],['tix','🎫','Ticket'],['rep','📊','Report'],...(isA()?[['team','👥','Team']]:[])];
+ const pend=Object.values(S.reqs).filter(q=>q.status==='pending').length;
+ $('#nav').replaceChildren(...tabs.map(([k,i,l])=>E('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.sel=null;render()}},E('span',{},i),l,k==='req'&&isA()&&pend?E('i',{},pend):null)));
+ if(S.tab==='team'&&!isA())S.tab='oggi';
+ $('#v').replaceChildren({oggi:vOggi,cal:vCal,req:vReq,tix:vTix,rep:vRep,team:vTeam}[S.tab]());scrollTo(0,y)}
+/* promemoria */
+function seen(k,set){const key='pr_'+today()+'_'+k;try{if(set)localStorage.setItem(key,'1');return!!localStorage.getItem(key)}catch(e){return window['_'+key]=set||window['_'+key]}}
+let shownIn=false,shownOut=false;function remind(force){if(!P('canPunch'))return;const n=new Date(),m=n.getHours()*60+n.getMinutes(),d=S.days[uid+'_'+today()];if(!force&&(n.getDay()%6===0||reqsOn(uid,today()).some(q=>q.status==='approved')))return;
+ let k=null;if(force)k=d?.in&&!d.out?'out':'in';else if(m>=mn(cf().in)&&!d?.in&&!d?.off&&m<mn(cf().out)&&!shownIn)k='in';else if(m>=mn(cf().out)&&d?.in&&!d.out&&!shownOut)k='out';
+ if(!k||$('#ov'))return;const msg=k==='in'?'Non hai ancora timbrato l\'entrata (orario '+cf().in+').':'Sono le '+cf().out+': ricordati di timbrare l\'uscita.';
+ try{if(Notification.permission==='granted')new Notification('Presenze & Ticket Pro',{body:msg})}catch(e){}
+ if(k==='in'){shownIn=true;fix([{dt:today(),k:'none'}],0);return}if(k==='out'){shownOut=true;outModal(force?hm(new Date()):cf().out);return}modal('⚠️ Promemoria timbratura',E('p',{},msg),[E('button',{class:'btn gh',onclick:()=>{seen(k,1);close()}},k==='in'?'Ho già timbrato / ignora':'Più tardi'),E('button',{class:k==='in'?'btn ok':'btn er',onclick:()=>{seen(k,1);close();k==='in'?punchIn():punchOut()}},k==='in'?'Timbra entrata':'Timbra uscita')])}
+function missing(){const st=S.staff[uid],a=new Date(new Date().getFullYear(),new Date().getMonth(),1),out=[],t=today();a.setHours(12,0,0,0);
+ for(const d=new Date(a);ymd(d)<t;d.setDate(d.getDate()+1)){const dt=ymd(d);if(d.getDay()%6===0)continue;const r=S.days[uid+'_'+dt];
+  if(reqsOn(uid,dt,1).length||r?.off)continue;if(!r)out.push({dt,k:'none'});else if(r.in&&!r.out)out.push({dt,k:'noout'})}
+ return out}
+function checkMissing(){if($('#ov')||!P('canPunch'))return false;const l=missing();if(!l.length)return false;fix(l,0);return true}
+function fix(l,i){if(i>=l.length){close();toast('Tutto a posto ✅');return}const{dt,k}=l[i],r=S.days[uid+'_'+dt]||{};
+ const cp=dt===today()||P('canEditPast'),cr=P('canRequest'),no=E('textarea',{rows:2,placeholder:'Motivo (facoltativo)'}),ty=E('select',{},opts(k==='noout'?[['work',cp?'Completa l\'uscita':'Richiedi la correzione dell\'uscita']]:[['work',cp?'Ho lavorato':'Richiedi la correzione (ho lavorato)'],...(cr?[['permesso','Permesso'],['ferie','Ferie']]:[]),['malattia','Malattia'],['off',cp?'Non lavoravo / salta':'Non lavoravo (richiede conferma)']],'work'));
+ const ein=E('input',{type:'time',value:r.in||cf().in}),eout=E('input',{type:'time',value:cf().out}),pa=E('select',{},opts(PAUSES,cf().pause)),h=E('input',{type:'number',min:.5,max:8,step:.5,value:2});
+ const td=dt===today(),w=E('div',{},fld('Entrata',ein),td?E('div',{style:'margin-bottom:10px'},E('button',{class:'btn gh sm',onclick:()=>{ein.value=hm(new Date())}},'Imposta l\'ora attuale')):null,td?null:fld('Uscita',eout),td?null:fld('Pausa',pa)),ph=E('div',{style:'display:none'},fld('Ore di permesso',h));
+ ty.onchange=()=>{w.style.display=ty.value==='work'?'':'none';ph.style.display=ty.value==='permesso'?'':'none'};
+ modal(td?'⏰ Non hai timbrato l\'entrata':'Timbratura mancante ('+(i+1)+'/'+l.length+')',E('div',{},E('p',{},new Date(dt+'T12:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})+(k==='noout'?': hai timbrato l\'entrata alle '+r.in+' ma non l\'uscita.':(td?': non risulta l\'entrata. A che ora hai iniziato? Oppure indica permesso, malattia o ferie.':': non risulta nessuna timbratura. Cosa è successo?'))),fld('Tipo',ty),w,ph,cp?null:fld('Note per l\'amministratore',no)),
+  [E('button',{class:'btn gh',onclick:close},'Più tardi'),E('button',{class:'btn',onclick:async()=>{const v=ty.value;try{
+   if(v==='work'&&td){if(!ein.value)return toast('Inserisci l\'orario di entrata');await dref(uid,dt).set({uid,date:dt,in:ein.value,out:'',pause:0})}else if(v==='work'){if(!ein.value||!eout.value)return toast('Inserisci entrata e uscita');if(mn(eout.value)<=mn(ein.value))return toast('L\'uscita deve essere dopo l\'entrata');await(cp?dref(uid,dt).set({uid,date:dt,in:ein.value,out:eout.value,pause:+pa.value}):db.collection('reqs').add({uid,by:uid,type:'modifica',from:dt,to:dt,in:ein.value,out:eout.value,pause:+pa.value,note:no.value,status:'pending',created:Date.now()}))}
+   else if(v==='off')await(cp?dref(uid,dt).set({uid,date:dt,off:true}):db.collection('reqs').add({uid,by:uid,type:'modifica',from:dt,to:dt,off:true,note:no.value||'Non lavoravo',status:'pending',created:Date.now()}));
+   else await db.collection('reqs').add({uid,by:uid,type:v,from:dt,to:dt,hours:+h.value,note:'Inserito dopo mancata timbratura',status:v==='malattia'||role==='super'?'approved':'pending',created:Date.now()})
+  }catch(e){return err(e)}fix(l,i+1)}},'Salva e continua')])}
+function emailModal(){const st=S.staff[uid]||{},re=/^\S+@\S+\.\S+$/,e=E('input',{type:'email',value:st.email||me?.email||'',readonly:!!(st.email||me?.email),placeholder:'nome@azienda.it'}),n=E('input',{value:st.name||me?.name||''}),ce=E('input',{type:'email',value:st.calEmail||st.email||me?.email||'',placeholder:'email del tuo calendario'}),cs=E('select',{},opts([['1','Sì, sincronizza i ticket'],['0','No, non sincronizzare']],st.calSync===false?'0':'1'));
+ modal(st.email?'Profilo e calendario':'Registrazione',E('div',{},E('p',{class:'mu'},'Con la sincronizzazione attiva potrai aggiungere i ticket al tuo calendario con il promemoria.'),fld('Nome e cognome',n),fld('Email',e),fld('Email del calendario',ce),fld('Sincronizzare i ticket con il calendario?',cs)),
+ [st.email?cancel():null,E('button',{class:'btn',onclick:()=>{if(!re.test(e.value))return toast('Email non valida');if(cs.value==='1'&&!re.test(ce.value))return toast('Email del calendario non valida');run(db.doc('staff/'+uid).update({email:e.value.trim(),name:n.value.trim(),calEmail:ce.value.trim(),calSync:cs.value==='1'}));close();if(role==='super'&&!S.settings.company)setTimeout(()=>setModal(true),300)}},'Salva')])}
+function setModal(first){const c=cf(),nI=E('input',{value:c.name,placeholder:'Nome della ditta'}),i=E('input',{type:'time',value:c.in}),o=E('input',{type:'time',value:c.out}),p=E('select',{},opts(PAUSES,c.pause)),t=E('select',{},opts([[0,'Subito'],[15,'Da 15 minuti'],[30,'Da 30 minuti'],[60,'Da 60 minuti']],c.ot));
+ modal(first?'Benvenuto! Imposta la tua ditta':'Impostazioni ditta',E('div',{},fld('Nome ditta',nI),fld('Orario di entrata',i),fld('Orario di uscita',o),fld('Pausa predefinita',p),fld('Straordinario conteggiato',t),E('p',{class:'mu'},'Gli orari servono per i promemoria, le ore giornaliere e lo straordinario.')),
+ [first?null:cancel(),E('button',{class:'btn',onclick:()=>{if(!nI.value.trim())return toast('Inserisci il nome della ditta');if(mn(o.value)-mn(i.value)-+p.value<=0)return toast('Orari non validi');run(db.doc('settings/company').set({name:nI.value.trim(),in:i.value,out:o.value,pause:+p.value,ot:+t.value}));close()}},'Salva')])}
+function calModal(t){const tm=t.time||cf().in,st=t.due.replace(/-/g,'')+'T'+tm.replace(':','')+'00',e=new Date(t.due+'T'+tm+':00');e.setHours(e.getHours()+1);
+ const en=ymd(e).replace(/-/g,'')+'T'+hm(e).replace(':','')+'00',esc=s=>String(s||'').replace(/\\/g,'\\\\').replace(/[,;]/g,'\\$&').replace(/\r?\n/g,'\\n'),rem=+t.rem||0;
+ const g='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t.title)+'&details='+encodeURIComponent(t.desc||'')+'&dates='+st+'/'+en+(S.staff[uid]?.calEmail?'&authuser='+encodeURIComponent(S.staff[uid].calEmail):'');
+ const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Presenze Ticket Pro//IT','BEGIN:VEVENT','UID:'+(t.created||Date.now())+'-'+uid+'@presenze','DTSTAMP:'+new Date().toISOString().replace(/[-:]|\.\d+/g,''),'DTSTART:'+st,'DTEND:'+en,'SUMMARY:'+esc(t.title),'DESCRIPTION:'+esc(t.desc),...(rem?['BEGIN:VALARM','TRIGGER:-PT'+rem+'M','ACTION:DISPLAY','DESCRIPTION:'+esc(t.title),'END:VALARM']:[]),'END:VEVENT','END:VCALENDAR'].join('\r\n');
+ modal('📅 Aggiungi al calendario',E('div',{},E('p',{},t.title+' · '+t.due+' '+tm),E('p',{class:'mu'},'Il file .ics (Apple, Outlook, Google) include il promemoria'+(rem?' ('+(rem>=1440?'1 giorno':rem>=60?'1 ora':rem+' minuti')+' prima)':'')+'. Il link di Google Calendar non può impostare promemoria.')),
+ [cancel(),E('a',{class:'btn gh',href:g,target:'_blank',rel:'noopener',style:'text-decoration:none',onclick:()=>setTimeout(close,150)},'Google Calendar'),E('button',{class:'btn',onclick:()=>{if(!dl)return toast('Download non disponibile');dl.save({filename:'ticket-'+t.due+'.ics',data:ics}).catch(()=>{});close()}},'File .ics')])}
+/* avvio */
+(async()=>{try{if(typeof claude==='undefined'){$('#v').replaceChildren(E('div',{class:'card'},'Questa pagina funziona solo aprendo il link dell\'artifact dall\'app o dal sito di Claude, non come file scaricato. Riapri il link da Claude.'));return}const user=await claude.use('user');db=await claude.use('db');dl=await claude.use('downloads');try{inv=await claude.use('invite')}catch(e){inv=null}
+ if(!user||!db){$('#v').replaceChildren(E('div',{class:'card'},'Per usare l\'app apri il link da claude.ai con il tuo account (serve l\'accesso per registrare email e presenze).'));return}
+ me=await user.me();uid=me.id;owner=await user.isOwner();if(!uid){$('#v').replaceChildren(E('div',{class:'card'},'Accesso non riconosciuto: accedi a claude.ai e riapri la pagina.'));return}
+ const ref=db.doc('staff/'+uid),s=await ref.get(),cur=s.exists?s.data():{},b=Object.fromEntries(Object.entries({email:me.email,name:me.name}).filter(([k,v])=>v&&!cur[k]));
+ if(cur.active===false){$('#v').replaceChildren(E('div',{class:'card'},'Il tuo account è stato disattivato. Contatta l\'amministratore.'));return}
+ if(!s.exists)await ref.set({...b,role:owner?'super':'user',created:Date.now()});else{const u={...b,...(owner&&cur.role!=='super'?{role:'super'}:{})};if(Object.keys(u).length)await ref.update(u)}
+ for(const c of['staff','days','reqs','tix','settings','notifs'])db.collection(c).onSnapshot(sn=>{S[c]=Object.fromEntries(sn.docs.map(d=>[d.id,{...d.data(),id:d.id}]));render()},err);
+ render();setInterval(()=>{const c=$('#clk');if(c)c.textContent=hm(new Date());remind()},20000);document.addEventListener('visibilitychange',()=>!document.hidden&&(checkMissing()||remind()));setTimeout(()=>{const st=S.staff[uid]||{};if(!st.email||st.calSync===undefined)emailModal();else if(role==='super'&&!S.settings.company)setModal(true);else if(!checkMissing())remind()},1500)
+}catch(e){$('#v').replaceChildren(E('div',{class:'card'},'Errore di avvio: '+e.message))}})();
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
