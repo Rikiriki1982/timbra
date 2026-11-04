@@ -167,27 +167,25 @@ create trigger notif_guard before update on public.notifications for each row ex
 -- 8) NOTIFICHE AUTOMATICHE sulle richieste
 create or replace function public.reqs_notify() returns trigger
 language plpgsql security definer set search_path = public as $$
-declare who text; lbl text; per text; typ text; st text;
+declare who text; lbl text; per text; typ text := new.data->>'type'; st text := new.data->>'status'; u uuid;
 begin
   if new.coll <> 'reqs' then return new; end if;
-  typ := new.data->>'type'; st := new.data->>'status';
-  select coalesce(nullif(name, ''), email) into who from profiles where id = (new.data->>'uid')::uuid;
+  -- se l'utente della richiesta non esiste più (account eliminato) non c'è nessuno da notificare
+  begin u := (new.data->>'uid')::uuid; exception when others then return new; end;
+  if not exists (select 1 from profiles where id = u) then return new; end if;
+  select coalesce(nullif(name, ''), email) into who from profiles where id = u;
   lbl := case typ when 'ferie' then 'ferie' when 'permesso' then 'un permesso' when 'malattia' then 'malattia'
                   when 'modifica' then 'la correzione della timbratura' else typ end;
   per := case when new.data->>'from' = coalesce(new.data->>'to', new.data->>'from') then 'il ' || (new.data->>'from')
              else 'dal ' || (new.data->>'from') || ' al ' || (new.data->>'to') end;
-  if tg_op = 'INSERT' then
-    if st = 'pending' or typ = 'malattia' then
-      insert into notifications(kind, ref, from_user, message)
-        values ('req', new.id, (new.data->>'uid')::uuid, coalesce(who, 'Un dipendente') || ' ha richiesto ' || lbl || ' ' || per);
-    end if;
-  elsif tg_op = 'UPDATE' then
-    if old.data->>'status' = 'pending' and st in ('approved','rejected') then
-      insert into notifications(kind, ref, from_user, to_user, message)
-        values ('decision', new.id, auth.uid(), (new.data->>'uid')::uuid,
-                'La tua richiesta di ' || lbl || ' (' || (new.data->>'from') || ') è stata ' ||
-                case when st = 'approved' then 'approvata' else 'rifiutata' end);
-    end if;
+  if tg_op = 'INSERT' and (st = 'pending' or typ = 'malattia') then
+    insert into notifications(kind, ref, from_user, message)
+      values ('req', new.id, u, coalesce(who, 'Un dipendente') || ' ha richiesto ' || lbl || ' ' || per);
+  elsif tg_op = 'UPDATE' and old.data->>'status' = 'pending' and st in ('approved','rejected') then
+    insert into notifications(kind, ref, from_user, to_user, message)
+      values ('decision', new.id, auth.uid(), u,
+              'La tua richiesta di ' || lbl || ' (' || (new.data->>'from') || ') è stata ' ||
+              case when st = 'approved' then 'approvata' else 'rifiutata' end);
   end if;
   return new;
 end $$;
