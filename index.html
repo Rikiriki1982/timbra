@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PresenzePro - Gestione Presenze & Permessi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid fa-clock-rotate-left text-2xl text-blue-400"></i>
+        <h1 class="text-xl font-bold tracking-wide">PresenzePro</h1>
+      </div>
+      <div id="user-nav" class="hidden flex items-center space-x-4">
+        <span id="user-email-display" class="text-sm text-slate-300 font-medium"></span>
+        <button onclick="handleLogout()" class="bg-slate-700 hover:bg-slate-600 text-xs text-white px-3 py-2 rounded-lg transition">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i> Esci
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+    
+    <!-- AUTH CARD (LOGIN) -->
+    <div id="auth-section" class="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-8 mt-10 border border-slate-200">
+      <h2 class="text-2xl font-bold text-center text-slate-800 mb-6">Accedi al Sistema</h2>
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Email</label>
+          <input type="email" id="login-email" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs font-semibold text-slate-600 uppercase">Password</label>
+            <button type="button" onclick="openResetModal()" class="text-xs text-blue-600 hover:underline">Password dimenticata?</button>
+          </div>
+          <input type="password" id="login-password" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <button type="submit" id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition shadow-md">
+          Accedi
+        </button>
+      </form>
+    </div>
+
+    <!-- APP DASHBOARD (Hidden by default) -->
+    <div id="app-section" class="hidden space-y-6">
+      
+      <!-- User Info / Clock In Card -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h2 id="welcome-name" class="text-xl font-bold text-slate-800">Benvenuto</h2>
+          <p id="user-role-badge" class="text-xs inline-block px-2.5 py-1 rounded-full font-semibold uppercase mt-1 bg-slate-100 text-slate-600"></p>
+        </div>
+        
+        <div id="clock-in-box" class="hidden flex items-center space-x-3">
+          <button id="clock-btn" onclick="toggleClock()" class="px-6 py-3 rounded-xl font-bold text-white shadow-lg transition flex items-center space-x-2">
+            <i class="fa-solid fa-fingerprint text-xl"></i>
+            <span id="clock-btn-text">Timbra Ingresso</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Tabs -->
+      <div class="border-b border-slate-200 flex space-x-4">
+        <button onclick="switchTab('my-logs')" id="tab-my-logs" class="pb-3 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">
+          I miei Cartellini
+        </button>
+        <button onclick="switchTab('my-leave')" id="tab-my-leave" class="pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+          Richiesta Permessi
+        </button>
+        <button id="tab-admin" onclick="switchTab('admin')" class="hidden pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+          Pannello Admin
+        </button>
+      </div>
+
+      <!-- Tab Content: My Logs -->
+      <div id="content-my-logs" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 border-b border-slate-100 font-bold text-slate-700">Storico Timbrature</div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+              <tr>
+                <th class="p-4">Data</th>
+                <th class="p-4">Ingresso</th>
+                <th class="p-4">Uscita</th>
+                <th class="p-4">Totale Ore</th>
+              </tr>
+            </thead>
+            <tbody id="my-logs-table" class="divide-y divide-slate-100">
+              <!-- Logs inserted dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab Content: Admin Panel -->
+      <div id="content-admin" class="hidden space-y-6">
+        <!-- User Management -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-bold text-slate-800 mb-4">Gestione Membri & Permessi</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+                <tr>
+                  <th class="p-3">Utente</th>
+                  <th class="p-3">Ruolo</th>
+                  <th class="p-3 text-center">Timbrare</th>
+                  <th class="p-3 text-center">Modifica Storico</th>
+                  <th class="p-3 text-center">Richiesta Permessi</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-table" class="divide-y divide-slate-100">
+                <!-- Admin users list inserted dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Modal Password Reset -->
+  <div id="reset-modal" class="hidden fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+      <h3 class="text-lg font-bold text-slate-800 mb-2">Recupera Password</h3>
+      <p class="text-xs text-slate-500 mb-4">Inserisci la tua email per ricevere il link di ripristino.</p>
+      <input type="email" id="reset-email" placeholder="la-tua-email@esempio.it" class="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm mb-4">
+      <div class="flex justify-end space-x-2">
+        <button onclick="closeResetModal()" class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Annulla</button>
+        <button onclick="submitResetPassword()" class="px-4 py-2 text-xs bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">Invia Link</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // CONFIGURAZIONE SUPABASE INSERITA
+    const SUPABASE_URL = 'https://avhuwfxqmcdzrgcxrlf.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_KbVtYYHfY_mgKK-1Gz1skA_KLJgf2TF';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUser = null;
+    let userProfile = null;
+
+    // Check Auth State on Load
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        await loadUserProfile();
+      }
+    });
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        alert("Errore di accesso: " + error.message);
+      } else {
+        currentUser = data.user;
+        await loadUserProfile();
+      }
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      window.location.reload();
+    }
+
+    async function loadUserProfile() {
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (data) {
+        userProfile = data;
+        renderAppUI();
+      }
+    }
+
+    function renderAppUI() {
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('app-section').classList.remove('hidden');
+      document.getElementById('user-nav').classList.remove('hidden');
+      document.getElementById('user-email-display').innerText = currentUser.email;
+      document.getElementById('welcome-name').innerText = userProfile.full_name || currentUser.email;
+      document.getElementById('user-role-badge').innerText = userProfile.role;
+
+      if (userProfile.role === 'owner' || userProfile.role === 'admin') {
+        document.getElementById('tab-admin').classList.remove('hidden');
+      }
+
+      if (userProfile.can_clock_in) {
+        document.getElementById('clock-in-box').classList.remove('hidden');
+      }
+    }
+
+    function openResetModal() { document.getElementById('reset-modal').classList.remove('hidden'); }
+    function closeResetModal() { document.getElementById('reset-modal').classList.add('hidden'); }
+
+    async function submitResetPassword() {
+      const email = document.getElementById('reset-email').value;
+      if (!email) return alert("Inserisci un'email valida.");
+
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href,
+      });
+
+      if (error) {
+        alert("Errore: " + error.message);
+      } else {
+        alert("Email di ripristino inviata! Controlla la tua casella di posta.");
+        closeResetModal();
+      }
+    }
+  </script>
+</body>
+</html>
