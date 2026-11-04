@@ -3,229 +3,351 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PresenzePro - Gestione Presenze & Permessi</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Gestione Presenze & Permessi Pro</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
-  <!-- Header -->
-  <header class="bg-slate-900 text-white shadow-md">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <i class="fa-solid fa-clock-rotate-left text-2xl text-blue-400"></i>
-        <h1 class="text-xl font-bold tracking-wide">PresenzePro</h1>
-      </div>
-      <div id="user-nav" class="hidden flex items-center space-x-4">
-        <span id="user-email-display" class="text-sm text-slate-300 font-medium"></span>
-        <button onclick="handleLogout()" class="bg-slate-700 hover:bg-slate-600 text-xs text-white px-3 py-2 rounded-lg transition">
-          <i class="fa-solid fa-right-from-bracket mr-1"></i> Esci
-        </button>
-      </div>
+  <!-- TOPNAV -->
+  <nav class="bg-slate-900 text-white p-4 shadow-lg flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <i class="fa-solid fa-clock-rotate-left text-blue-400 text-2xl"></i>
+      <h1 class="font-bold text-xl tracking-wide">PresenzePro</h1>
     </div>
-  </header>
+    <div id="userInfo" class="hidden flex items-center space-x-4 text-sm">
+      <span id="userBadge" class="bg-blue-600 text-xs px-2 py-1 rounded font-semibold uppercase"></span>
+      <span id="userEmail" class="text-slate-300"></span>
+      <button onclick="logout()" class="text-red-400 hover:text-red-300 text-base"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+  </nav>
 
-  <!-- Main Container -->
-  <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
-    
-    <!-- AUTH CARD (LOGIN) -->
-    <div id="auth-section" class="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-8 mt-10 border border-slate-200">
-      <h2 class="text-2xl font-bold text-center text-slate-800 mb-6">Accedi al Sistema</h2>
+  <div class="max-w-6xl mx-auto p-4 md:p-6">
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginSection" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md mt-10">
+      <h2 class="text-2xl font-bold mb-6 text-center text-slate-800">Accedi al Sistema</h2>
       <form onsubmit="handleLogin(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Email</label>
-          <input type="email" id="login-email" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <label class="block text-sm font-medium mb-1">Email</label>
+          <input type="email" id="loginEmail" required class="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
         </div>
         <div>
-          <div class="flex justify-between items-center mb-1">
-            <label class="block text-xs font-semibold text-slate-600 uppercase">Password</label>
-            <button type="button" onclick="openResetModal()" class="text-xs text-blue-600 hover:underline">Password dimenticata?</button>
-          </div>
-          <input type="password" id="login-password" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <label class="block text-sm font-medium mb-1">Password</label>
+          <input type="password" id="loginPassword" required class="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
         </div>
-        <button type="submit" id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition shadow-md">
-          Accedi
-        </button>
+        <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition">Accedi</button>
       </form>
     </div>
 
-    <!-- APP DASHBOARD (Hidden by default) -->
-    <div id="app-section" class="hidden space-y-6">
-      
-      <!-- User Info / Clock In Card -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div>
-          <h2 id="welcome-name" class="text-xl font-bold text-slate-800">Benvenuto</h2>
-          <p id="user-role-badge" class="text-xs inline-block px-2.5 py-1 rounded-full font-semibold uppercase mt-1 bg-slate-100 text-slate-600"></p>
+    <!-- MAIN APP DASHBOARD -->
+    <div id="appSection" class="hidden space-y-6">
+
+      <!-- PANNELLO NOTIFICHE ADMIN/OWNER -->
+      <div id="notificationsPanel" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2 text-amber-800">
+            <i class="fa-solid fa-bell text-xl"></i>
+            <h3 class="font-bold text-lg">Notifiche e Richieste da Leggere</h3>
+          </div>
+          <span id="unreadCount" class="bg-amber-600 text-white text-xs px-2.5 py-1 rounded-full font-bold">0 Nuove</span>
         </div>
-        
-        <div id="clock-in-box" class="hidden flex items-center space-x-3">
-          <button id="clock-btn" onclick="toggleClock()" class="px-6 py-3 rounded-xl font-bold text-white shadow-lg transition flex items-center space-x-2">
-            <i class="fa-solid fa-fingerprint text-xl"></i>
-            <span id="clock-btn-text">Timbra Ingresso</span>
+        <div id="notificationsList" class="space-y-3">
+          <!-- Inserite dinamicamente -->
+        </div>
+      </div>
+
+      <!-- SEZIONE TIMBRATURA (DIPENDENTE) -->
+      <div class="bg-white rounded-xl shadow-sm p-6 border">
+        <h3 class="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-fingerprint text-blue-600"></i> Timbratura Rapida
+        </h3>
+        <div id="clockStatus" class="mb-4 p-3 rounded-lg text-sm bg-slate-50 border">Caricamento stato...</div>
+        <div class="flex gap-4">
+          <button id="btnClockIn" onclick="clockAction('in')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrata
+          </button>
+          <button id="btnClockOut" onclick="clockAction('out')" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Uscita
           </button>
         </div>
       </div>
 
-      <!-- Main Tabs -->
-      <div class="border-b border-slate-200 flex space-x-4">
-        <button onclick="switchTab('my-logs')" id="tab-my-logs" class="pb-3 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">
-          I miei Cartellini
-        </button>
-        <button onclick="switchTab('my-leave')" id="tab-my-leave" class="pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">
-          Richiesta Permessi
-        </button>
-        <button id="tab-admin" onclick="switchTab('admin')" class="hidden pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700">
-          Pannello Admin
-        </button>
+      <!-- RICHIESTA PERMESSO (DIPENDENTE) -->
+      <div id="requestLeaveSection" class="bg-white rounded-xl shadow-sm p-6 border">
+        <h3 class="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-calendar-plus text-indigo-600"></i> Invia Richiesta Permesso / Ferie
+        </h3>
+        <form onsubmit="handleLeaveRequest(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold mb-1 uppercase">Tipo Richiesta</label>
+            <select id="reqType" class="w-full border rounded-lg p-2 text-sm">
+              <option value="Ferie">Ferie</option>
+              <option value="Permesso Orario">Permesso Orario</option>
+              <option value="Malattia">Malattia</option>
+              <option value="Modifica Timbratura">Modifica Timbratura</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1 uppercase">Inizio</label>
+            <input type="datetime-local" id="reqStart" required class="w-full border rounded-lg p-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1 uppercase">Fine</label>
+            <input type="datetime-local" id="reqEnd" required class="w-full border rounded-lg p-2 text-sm">
+          </div>
+          <div class="md:col-span-3">
+            <label class="block text-xs font-semibold mb-1 uppercase">Note / Motivazione</label>
+            <input type="text" id="reqReason" placeholder="Motivo della richiesta..." class="w-full border rounded-lg p-2 text-sm">
+          </div>
+          <button type="submit" class="md:col-span-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg text-sm transition">Invia Segnalazione all'Admin</button>
+        </form>
       </div>
 
-      <!-- Tab Content: My Logs -->
-      <div id="content-my-logs" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="p-4 border-b border-slate-100 font-bold text-slate-700">Storico Timbrature</div>
+      <!-- GESTIONE MEMBRI E PERMESSI (SOLO OWNER / ADMIN) -->
+      <div id="adminPanel" class="hidden bg-white rounded-xl shadow-sm p-6 border space-y-6">
+        <div class="flex justify-between items-center border-b pb-4">
+          <div>
+            <h3 class="font-bold text-xl text-slate-800">Gestione Membri & Permessi</h3>
+            <p class="text-sm text-slate-500">Assegna permessi di timbratura, modifica e invita nuovi dipendenti</p>
+          </div>
+          <button onclick="toggleInviteModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> Invita Dipendente
+          </button>
+        </div>
+
+        <!-- TABELLA MEMBRI -->
         <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
-              <tr>
-                <th class="p-4">Data</th>
-                <th class="p-4">Ingresso</th>
-                <th class="p-4">Uscita</th>
-                <th class="p-4">Totale Ore</th>
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-50 border-b">
+                <th class="p-3">Utente</th>
+                <th class="p-3">Ruolo</th>
+                <th class="p-3">Timbratura</th>
+                <th class="p-3">Modifica Timbrature</th>
+                <th class="p-3">Richiesta Permessi</th>
+                <th class="p-3 text-right">Azioni</th>
               </tr>
             </thead>
-            <tbody id="my-logs-table" class="divide-y divide-slate-100">
-              <!-- Logs inserted dynamically -->
+            <tbody id="membersTableBody" class="divide-y">
+              <!-- Inseriti dinamicamente -->
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- Tab Content: Admin Panel -->
-      <div id="content-admin" class="hidden space-y-6">
-        <!-- User Management -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h3 class="text-lg font-bold text-slate-800 mb-4">Gestione Membri & Permessi</h3>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-              <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
-                <tr>
-                  <th class="p-3">Utente</th>
-                  <th class="p-3">Ruolo</th>
-                  <th class="p-3 text-center">Timbrare</th>
-                  <th class="p-3 text-center">Modifica Storico</th>
-                  <th class="p-3 text-center">Richiesta Permessi</th>
-                </tr>
-              </thead>
-              <tbody id="admin-users-table" class="divide-y divide-slate-100">
-                <!-- Admin users list inserted dynamically -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
     </div>
-  </main>
+  </div>
 
-  <!-- Modal Password Reset -->
-  <div id="reset-modal" class="hidden fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-      <h3 class="text-lg font-bold text-slate-800 mb-2">Recupera Password</h3>
-      <p class="text-xs text-slate-500 mb-4">Inserisci la tua email per ricevere il link di ripristino.</p>
-      <input type="email" id="reset-email" placeholder="la-tua-email@esempio.it" class="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm mb-4">
-      <div class="flex justify-end space-x-2">
-        <button onclick="closeResetModal()" class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Annulla</button>
-        <button onclick="submitResetPassword()" class="px-4 py-2 text-xs bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">Invia Link</button>
+  <!-- MODALE INVITO DIPENDENTE -->
+  <div id="inviteModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <h3 class="font-bold text-lg text-slate-800">Invita Nuovo Membro</h3>
+      <div>
+        <label class="block text-xs font-semibold mb-1 uppercase">Email Dipendente</label>
+        <input type="email" id="inviteEmail" required placeholder="dipendente@azienda.it" class="w-full border rounded-lg p-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold mb-1 uppercase">Ruolo Assegnato</label>
+        <select id="inviteRole" class="w-full border rounded-lg p-2 text-sm">
+          <option value="user">User (Dipendente)</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="space-y-2 border-t pt-3">
+        <label class="block text-xs font-semibold uppercase">Permessi Iniziali</label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" id="inviteCanClock" checked class="rounded"> Abilitato alla Timbratura
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" id="inviteCanEdit" class="rounded"> Può modificare presenze passate
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" id="inviteCanLeave" checked class="rounded"> Può inviare richieste permessi
+        </label>
+      </div>
+      <div class="flex justify-end gap-2 pt-4">
+        <button onclick="toggleInviteModal()" class="px-4 py-2 border rounded-lg text-sm">Annulla</button>
+        <button onclick="sendInvite()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Invia Invito</button>
       </div>
     </div>
   </div>
 
   <script>
-    // CONFIGURAZIONE SUPABASE
-    const SUPABASE_URL = 'https://avhuwfxqcmcdzrgcxrlf.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_KbVtYYHfY_mgKK-1Gz1skA_KLJgf2TF';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // CONFIGURAZIONE SUPABASE (Sostituisci con le tue chiavi Supabase)
+    const SUPABASE_URL = 'https://TUO-PROGETTO.supabase.co';
+    const SUPABASE_ANON_KEY = 'LA-TUA-CHIAVE-ANONIMA';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let currentUser = null;
-    let userProfile = null;
+    let currentProfile = null;
 
-    // Check Auth State on Load
-    window.addEventListener('DOMContentLoaded', async () => {
-      const { data: { session } } = await supabaseClient.auth.getSession();
+    async function initApp() {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         currentUser = session.user;
-        await loadUserProfile();
+        await loadProfile();
+        showApp();
       }
-    });
+    }
 
     async function handleLogin(e) {
       e.preventDefault();
-      const email = document.getElementById('login-email').value;
-      const password = document.getElementById('login-password').value;
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) {
-        alert("Errore di accesso: " + error.message);
-      } else {
-        currentUser = data.user;
-        await loadUserProfile();
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return alert('Errore di accesso: ' + error.message);
+
+      currentUser = data.user;
+      await loadProfile();
+      showApp();
+    }
+
+    async function loadProfile() {
+      const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+      currentProfile = data;
+
+      document.getElementById('userEmail').innerText = currentProfile.email;
+      document.getElementById('userBadge').innerText = currentProfile.role;
+
+      // Gestione visibilità permessi timbratura
+      document.getElementById('btnClockIn').disabled = !currentProfile.can_clock_in;
+      document.getElementById('btnClockOut').disabled = !currentProfile.can_clock_in;
+      document.getElementById('clockStatus').innerText = currentProfile.can_clock_in 
+        ? 'Stato: Abilitato a registrare le presenze.' 
+        : 'Stato: Non sei abilitato alla timbratura (Contatta l\'admin).';
+
+      // Gestione pannello admin/owner
+      if (['owner', 'admin'].includes(currentProfile.role)) {
+        document.getElementById('adminPanel').classList.remove('hidden');
+        document.getElementById('notificationsPanel').classList.remove('hidden');
+        loadMembers();
+        loadNotifications();
       }
     }
 
-    async function handleLogout() {
-      await supabaseClient.auth.signOut();
+    function showApp() {
+      document.getElementById('loginSection').classList.add('hidden');
+      document.getElementById('userInfo').classList.remove('hidden');
+      document.getElementById('appSection').classList.remove('hidden');
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
       window.location.reload();
     }
 
-    async function loadUserProfile() {
-      const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single();
+    // AZIONE TIMBRATURA
+    async function clockAction(type) {
+      if (!currentProfile.can_clock_in) return alert('Permesso non concesso.');
 
-      if (data) {
-        userProfile = data;
-        renderAppUI();
-      }
+      const { error } = await supabase.from('clock_records').insert([{
+        user_id: currentUser.id,
+        type: type
+      }]);
+
+      if (error) alert('Errore nella registrazione: ' + error.message);
+      else alert(`Timbratura di ${type === 'in' ? 'ENTRATA' : 'USCITA'} registrata!`);
     }
 
-    function renderAppUI() {
-      document.getElementById('auth-section').classList.add('hidden');
-      document.getElementById('app-section').classList.remove('hidden');
-      document.getElementById('user-nav').classList.remove('hidden');
-      document.getElementById('user-email-display').innerText = currentUser.email;
-      document.getElementById('welcome-name').innerText = userProfile.full_name || currentUser.email;
-      document.getElementById('user-role-badge').innerText = userProfile.role;
+    // RICHIEDI PERMESSO / NOTIFICA PER ADMIN
+    async function handleLeaveRequest(e) {
+      e.preventDefault();
+      if (!currentProfile.can_request_leave) return alert('Non hai i permessi per inviare richieste.');
 
-      if (userProfile.role === 'owner' || userProfile.role === 'admin') {
-        document.getElementById('tab-admin').classList.remove('hidden');
-      }
+      const { error } = await supabase.from('leave_requests').insert([{
+        user_id: currentUser.id,
+        request_type: document.getElementById('reqType').value,
+        start_time: document.getElementById('reqStart').value,
+        end_time: document.getElementById('reqEnd').value,
+        reason: document.getElementById('reqReason').value
+      }]);
 
-      if (userProfile.can_clock_in) {
-        document.getElementById('clock-in-box').classList.remove('hidden');
-      }
+      if (error) alert('Errore invio richiesta: ' + error.message);
+      else alert('Richiesta inviata all\'amministratore con successo!');
     }
 
-    function openResetModal() { document.getElementById('reset-modal').classList.remove('hidden'); }
-    function closeResetModal() { document.getElementById('reset-modal').classList.add('hidden'); }
+    // CARICA NOTIFICHE PER ADMIN / OWNER
+    async function loadNotifications() {
+      const { data } = await supabase.from('leave_requests')
+        .select('*, profiles(email, full_name)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
 
-    async function submitResetPassword() {
-      const email = document.getElementById('reset-email-input') ? document.getElementById('reset-email-input').value : document.getElementById('reset-email').value;
-      if (!email) return alert("Inserisci un'email valida.");
+      const list = document.getElementById('notificationsList');
+      document.getElementById('unreadCount').innerText = `${data.length} Nuove`;
+      list.innerHTML = '';
 
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.href,
+      if (data.length === 0) {
+        list.innerHTML = '<p class="text-sm text-slate-500">Nessuna nuova notifica in sospeso.</p>';
+        return;
+      }
+
+      data.forEach(req => {
+        list.innerHTML += `
+          <div class="bg-white p-3 rounded-lg border flex justify-between items-center text-sm shadow-sm">
+            <div>
+              <span class="font-bold text-slate-800">${req.profiles.full_name || req.profiles.email}</span>: 
+              <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-xs font-semibold">${req.request_type}</span>
+              <p class="text-xs text-slate-500 mt-1">${new Date(req.start_time).toLocaleString()} - ${new Date(req.end_time).toLocaleString()}</p>
+              ${req.reason ? `<p class="text-xs text-slate-600 italic">"${req.reason}"</p>` : ''}
+            </div>
+            <div class="flex gap-2">
+              <button onclick="updateRequest('${req.id}', 'approved')" class="bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-emerald-700">Approva</button>
+              <button onclick="updateRequest('${req.id}', 'rejected')" class="bg-rose-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-rose-700">Rifiuta</button>
+            </div>
+          </div>
+        `;
       });
-
-      if (error) {
-        alert("Errore: " + error.message);
-      } else {
-        alert("Email di ripristino inviata! Controlla la tua casella di posta.");
-        closeResetModal();
-      }
     }
-  </script>
-</body>
-</html>
+
+    async function updateRequest(id, status) {
+      await supabase.from('leave_requests').update({ status, read_by_admin: true }).eq('id', id);
+      loadNotifications();
+    }
+
+    // GESTIONE TABELLA MEMBRI & PERMESSI
+    async function loadMembers() {
+      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: true });
+      const tbody = document.getElementById('membersTableBody');
+      tbody.innerHTML = '';
+
+      data.forEach(m => {
+        tbody.innerHTML += `
+          <tr>
+            <td class="p-3 font-medium">${m.email}</td>
+            <td class="p-3"><span class="uppercase text-xs font-bold">${m.role}</span></td>
+            <td class="p-3">
+              <input type="checkbox" ${m.can_clock_in ? 'checked' : ''} onchange="updatePermission('${m.id}', 'can_clock_in', this.checked)">
+            </td>
+            <td class="p-3">
+              <input type="checkbox" ${m.can_edit_clocks ? 'checked' : ''} onchange="updatePermission('${m.id}', 'can_edit_clocks', this.checked)">
+            </td>
+            <td class="p-3">
+              <input type="checkbox" ${m.can_request_leave ? 'checked' : ''} onchange="updatePermission('${m.id}', 'can_request_leave', this.checked)">
+            </td>
+            <td class="p-3 text-right">
+              <button onclick="sendWhatsAppInvite('${m.email}')" class="text-emerald-600 hover:text-emerald-700 text-xs font-bold"><i class="fa-brands fa-whatsapp"></i> Invia Link</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function updatePermission(userId, field, value) {
+      const updates = {};
+      updates[field] = value;
+      await supabase.from('profiles').update(updates).eq('id', userId);
+    }
+
+    function toggleInviteModal() {
+      document.getElementById('inviteModal').classList.toggle('hidden');
+    }
+
+    // INVITO DIPENDENTE A COSTO ZERO
+    async function sendInvite() {
+      const email = document.getElementById('inviteEmail').value;
+      const role = document.getElementById('inviteRole').value;
+      const can_clock_in = document.getElementById('inviteCan
