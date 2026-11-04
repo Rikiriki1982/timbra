@@ -175,10 +175,11 @@ begin
   if not exists (select 1 from profiles where id = u) then return new; end if;
   select coalesce(nullif(name, ''), email) into who from profiles where id = u;
   lbl := case typ when 'ferie' then 'ferie' when 'permesso' then 'un permesso' when 'malattia' then 'malattia'
-                  when 'modifica' then 'la correzione della timbratura' else typ end;
+                  when 'modifica' then 'una modifica al calendario' else typ end;
   per := case when new.data->>'from' = coalesce(new.data->>'to', new.data->>'from') then 'il ' || (new.data->>'from')
              else 'dal ' || (new.data->>'from') || ' al ' || (new.data->>'to') end;
-  if tg_op = 'INSERT' and (st = 'pending' or typ = 'malattia') then
+  -- notifica agli Admin: richieste in attesa, oppure malattia registrata dall'utente stesso
+  if tg_op = 'INSERT' and (st = 'pending' or (typ = 'malattia' and coalesce(new.data->>'by', new.data->>'uid') = new.data->>'uid')) then
     insert into notifications(kind, ref, from_user, message)
       values ('req', new.id, u, coalesce(who, 'Un dipendente') || ' ha richiesto ' || lbl || ' ' || per);
   elsif tg_op = 'UPDATE' and old.data->>'status' = 'pending' and st in ('approved','rejected') then
