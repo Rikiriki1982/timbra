@@ -1,1 +1,1 @@
-window.PTP_CFG={url:"INCOLLA_QUI_PROJECT_URL",key:"INCOLLA_QUI_ANON_KEY"};
+window.PTP_CFG={url:"https://avhuwfxqcmcdzrgcxrlf.supabase.co",key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aHV3ZnhxY21jZHpyZ2N4cmxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4MDEwODQsImV4cCI6MjEwOTM3NzA4NH0.EXkL2QoRiyIzvgwCCydi9VyFeb2IMulS883WD8Xajig"};
