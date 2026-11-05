@@ -25,6 +25,45 @@ Deno.serve(async (req) => {
     if (!me || !me.active || !['admin', 'super'].includes(me.role)) return json({ error: 'Permesso negato' }, 403)
 
     const b = await req.json()
+
+    // eliminazione di un utente (con o senza storico)
+    if (b.action === 'delete') {
+      const id = String(b.id ?? '')
+      if (!id || id === user.id) return json({ error: 'Non puoi eliminare te stesso' }, 400)
+      const { data: t } = await admin.from('profiles').select('id,role,name,email').eq('id', id).maybeSingle()
+      if (!t) return json({ error: 'Utente non trovato' }, 404)
+      if (t.role === 'super') return json({ error: 'Il Proprietario non si può eliminare' }, 403)
+      if (me.role === 'admin' && t.role !== 'user') return json({ error: 'Permesso negato' }, 403)
+      const keep = b.keepHistory === true
+
+      await admin.from('profiles').update({ invited_by: null }).eq('invited_by', id)
+      const { error: de } = await admin.auth.admin.deleteUser(id)   // elimina anche il profilo e le sue notifiche
+      if (de) return json({ error: de.message }, 400)
+
+      if (keep) {
+        // lo storico resta (giorni, richieste, ticket) e il nome viene ricordato come "ex"
+        await admin.from('docs').upsert({ coll: 'ex', id, data: { name: t.name, email: t.email, deleted: Date.now(), by: user.id } })
+      } else {
+        await admin.from('docs').delete().in('coll', ['days', 'reqs', 'tix']).eq('data->>uid', id)
+      }
+      // toglie l'utente dai ticket assegnati e dai gruppi
+      const { data: tx } = await admin.from('docs').select('id,data').eq('coll', 'tix').contains('data', { assignees: [id] })
+      for (const r of tx ?? []) {
+        const d = r.data as Record<string, unknown>
+        await admin.from('docs').update({ data: {
+          ...d,
+          assignees: ((d.assignees as string[]) ?? []).filter((x) => x !== id),
+          assignUsers: ((d.assignUsers as string[]) ?? []).filter((x) => x !== id),
+        } }).eq('coll', 'tix').eq('id', r.id)
+      }
+      const { data: gs } = await admin.from('docs').select('id,data').eq('coll', 'groups')
+      for (const r of gs ?? []) {
+        const d = r.data as Record<string, unknown>
+        const m = (d.members as string[]) ?? []
+        if (m.includes(id)) await admin.from('docs').update({ data: { ...d, members: m.filter((x) => x !== id) } }).eq('coll', 'groups').eq('id', r.id)
+      }
+      return json({ ok: true })
+    }
     const email = String(b.email ?? '').trim().toLowerCase()
     if (!/^\S+@\S+\.\S+$/.test(email)) return json({ error: 'Email non valida' }, 400)
     const role = b.role === 'admin' ? 'admin' : 'user'
