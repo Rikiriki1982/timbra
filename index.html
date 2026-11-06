@@ -10,7 +10,7 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;padding-bottom:84px}
 header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:linear-gradient(135deg,#4f46e5,#0ea5e9);color:#fff}
-header h1{margin:0;font-size:18px}header small{opacity:.9;display:block}
+header h1{margin:0;font-size:18px}.hl{display:flex;align-items:center;gap:10px;min-width:0}#logo{height:40px;max-width:96px;object-fit:contain;background:#fff;border-radius:9px;padding:3px;flex:none}#logo[hidden]{display:none}header small{opacity:.9;display:block}
 .badge{background:rgba(255,255,255,.25);padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600}
 main{max-width:860px;margin:0 auto;padding:14px}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:12px;overflow-x:auto}
@@ -44,7 +44,7 @@ input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px soli
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:#111827;color:#fff;padding:10px 16px;border-radius:12px;z-index:30;display:none}
 em.modifica{background:var(--wa)!important}.faq{max-height:60vh;overflow:auto}.faq details{border-bottom:1px solid var(--bd);padding:8px 0}.faq summary{cursor:pointer;font-weight:600}.faq p{margin:6px 0 0;color:var(--mu,#667)}.tgl{display:flex;align-items:center;gap:8px;padding:5px 0;margin:0}.tgl input{width:auto}.perm{margin-top:8px;border-top:1px solid var(--bd);padding-top:6px}input[readonly]{opacity:.7}
 </style></head><body>
-<header><div><h1>⏱️ Presenze & Ticket Pro</h1><small id="who"></small></div><span style="display:flex;gap:8px;align-items:center"><button class="badge" id="bell" onclick="notifPanel()" style="border:0;color:#fff;cursor:pointer;font-size:15px">🔔</button><span class="badge" id="role"></span></span></header>
+<header><div class="hl"><img id="logo" alt="" hidden><div><h1>⏱️ Presenze & Ticket Pro</h1><small id="who"></small></div></div><span style="display:flex;gap:8px;align-items:center"><button class="badge" id="bell" onclick="notifPanel()" style="border:0;color:#fff;cursor:pointer;font-size:15px">🔔</button><span class="badge" id="role"></span></span></header>
 <div id="inst"></div>
 <main id="v"><div class="card mu">Caricamento…</div></main>
 <nav id="nav"></nav><div id="toast"></div>
@@ -87,7 +87,7 @@ const user={me:async()=>{let s=(await sb.auth.getSession()).data.session;if(NEED
  return{id:u.id,email:u.email,name:u.user_metadata?.name||''}},isOwner:async()=>false};
 const push={key:CFG.vapid||'',save:async s=>{const me=(await sb.auth.getSession()).data.session?.user;if(!me)return;const j=s.toJSON?s.toJSON():s;const{error}=await sb.from('push_subs').upsert({user_id:me.id,endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth,ua:navigator.userAgent.slice(0,200)},{onConflict:'endpoint'});if(error)throw error},remove:async ep=>{await sb.from('push_subs').delete().eq('endpoint',ep)},test:async()=>{const{data,error}=await sb.rpc('push_test');if(error)throw error;return data}};
 const invite=async b=>{const{data,error}=await sb.functions.invoke('invite-user',{body:b});if(error){let m=error.message;try{const j=await error.context.json();if(j?.error)m=j.error}catch(e){}throw new Error(m)}if(data?.error)throw new Error(data.error);subs.forEach(f=>f());return data};
-const dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':'text/csv'}));a.download=filename;document.body.append(a);a.click();a.remove();return'saved'}};
+const dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':filename.endsWith('.pdf')?'application/pdf':'text/csv'}));a.download=filename;document.body.append(a);a.click();a.remove();return'saved'}};
 window.claude={use:async n=>({user,db,downloads:dl,invite,push})[n]||null};
 })()}
 /* Modalità autonoma: dati salvati nel browser di questo dispositivo */
@@ -108,7 +108,7 @@ const invite=async b=>{if(b.action!=='delete')throw new Error('Gli inviti funzio
  for(const k in d.tix||{}){const x=d.tix[k];if((x.assignees||[]).includes(b.id)){x.assignees=x.assignees.filter(i=>i!==b.id);x.assignUsers=(x.assignUsers||[]).filter(i=>i!==b.id)}}
  for(const k in d.groups||{})d.groups[k].members=(d.groups[k].members||[]).filter(i=>i!==b.id);save(d);notify();return{ok:true}};invite.local=true;
 const user={me:async()=>({id:'local',name:'',email:null}),isOwner:async()=>true};
-const dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':'text/csv'}));a.download=filename;document.body.append(a);a.click();a.remove();return'saved'}};
+const dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':filename.endsWith('.pdf')?'application/pdf':'text/csv'}));a.download=filename;document.body.append(a);a.click();a.remove();return'saved'}};
 window.claude={use:async n=>({user,db,downloads:dl,invite})[n]||null};
 })()}
 const $=s=>document.querySelector(s);
@@ -119,7 +119,7 @@ const MESI=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Ag
 const TL={ferie:'Ferie',malattia:'Malattia',permesso:'Permesso',modifica:'Modifica calendario'},ST={pending:'In attesa',approved:'Approvata',rejected:'Rifiutata'};
 let S={tab:'oggi',m:new Date(),sel:null,day:null,staff:{},days:{},reqs:{},tix:{},groups:{},ex:{},settings:{},notifs:{}},db,dl,inv,uid,owner=false,role='user',me;
 const isA=()=>role!=='user',canR=q=>isA()||(q.uid===uid&&q.status==='pending'),P=k=>k==='canPunch'?(S.staff[uid]||{}).canPunch!==false:isA()||(S.staff[uid]||{})[k]!==false,nm=id=>S.staff[id]?.name||S.staff[id]?.email||(S.ex[id]?(S.ex[id].name||S.ex[id].email||'Utente')+' (ex)':'Utente'),allIds=()=>[...Object.keys(S.staff),...Object.keys(S.ex).filter(k=>!S.staff[k])];
-const cf=()=>{const c=S.settings.company||{};return{name:c.name||'',in:c.in||'09:00',out:c.out||'18:00',pause:c.pause??60,ot:c.ot??30}},std=()=>Math.max(1,(mn(cf().out)-mn(cf().in)-cf().pause)/60),ot=h=>h-std()>=cf().ot/60?h-std():0,PAUSES=[[0,'Nessuna'],[30,'30 minuti'],[45,'45 minuti'],[60,'1 ora'],[90,'1 ora e 30']],net=d=>d&&d.in&&d.out?Math.max(0,(mn(d.out)-mn(d.in)-(+d.pause||0))/60):0;
+const cf=()=>{const c=S.settings.company||{};return{name:c.name||'',in:c.in||'09:00',out:c.out||'18:00',pause:c.pause??60,ot:c.ot??30,logo:c.logo||'',head:c.head||''}},std=()=>Math.max(1,(mn(cf().out)-mn(cf().in)-cf().pause)/60),ot=h=>h-std()>=cf().ot/60?h-std():0,PAUSES=[[0,'Nessuna'],[30,'30 minuti'],[45,'45 minuti'],[60,'1 ora'],[90,'1 ora e 30']],net=d=>d&&d.in&&d.out?Math.max(0,(mn(d.out)-mn(d.in)-(+d.pause||0))/60):0;
 const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t.h);t.h=setTimeout(()=>t.style.display='none',3000)};
 const reqsOn=(u,dt,m)=>Object.values(S.reqs).filter(q=>q.uid===u&&q.status!=='rejected'&&(m||q.type!=='modifica')&&q.from<=dt&&dt<=q.to);
 const mineT=(t,u)=>t.uid===u||(t.assignees||[]).includes(u),tixOn=(u,dt)=>Object.values(S.tix).filter(t=>mineT(t,u)&&t.due===dt);
@@ -163,6 +163,65 @@ function tixModal(x){const ab=isA()?asgBox(x):null,t=E('input',{value:x?.title||
 function ask(msg,fn,lbl){modal('Conferma',E('p',{},msg),[cancel(),E('button',{class:'btn er',onclick:()=>{close();fn()}},lbl||'Elimina')])}
 const showPh=src=>modal('Foto',E('img',{src,style:'width:100%;border-radius:10px'}),[cancel()]);
 function csv(rows,fn){const x=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');if(!dl)return toast('Download non disponibile');dl.save({filename:fn,data:'\ufeff'+x}).catch(()=>{})}
+/* PDF: generatore minimo (testo, linee, rettangoli, un'immagine JPEG), senza librerie */
+const HW=[278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584, 761, 556, 0, 222, 556, 333, 1000, 556, 556, 333, 1000, 667, 333, 1000, 0, 611, 0, 0, 222, 222, 333, 333, 350, 556, 1000, 333, 1000, 500, 333, 944, 0, 500, 667, 278, 333, 556, 556, 556, 556, 260, 556, 333, 737, 370, 556, 584, 333, 737, 333, 400, 584, 333, 333, 333, 556, 537, 278, 333, 333, 365, 556, 834, 834, 834, 611, 667, 667, 667, 667, 667, 667, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 500, 556, 556, 556, 556, 278, 278, 278, 278, 556, 556, 556, 556, 556, 556, 556, 584, 611, 556, 556, 556, 556, 500, 556, 500],HB=[278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611, 975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556, 333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584, 761, 556, 0, 278, 556, 500, 1000, 556, 556, 333, 1000, 667, 333, 1000, 0, 611, 0, 0, 278, 278, 500, 500, 350, 556, 1000, 333, 1000, 556, 333, 944, 0, 500, 667, 278, 333, 556, 556, 556, 556, 280, 556, 333, 737, 370, 556, 584, 333, 737, 333, 400, 584, 333, 333, 333, 611, 556, 278, 333, 333, 365, 556, 834, 834, 834, 611, 722, 722, 722, 722, 722, 722, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 556, 556, 556, 556, 556, 278, 278, 278, 278, 611, 611, 611, 611, 611, 611, 611, 584, 611, 611, 611, 611, 611, 556, 611, 556],CP={8217:146,8216:145,8220:147,8221:148,8211:150,8212:151,8364:128,8226:149,8230:133,8482:153};
+const pdfBytes=s=>{const o=[];for(const ch of String(s)){let c=ch.codePointAt(0);if(c>=160&&c<256||c>=32&&c<127)o.push(c);else if(CP[c])o.push(CP[c]);else o.push(c<32?32:63)}return o};
+const pdfW=(s,z,b)=>pdfBytes(s).reduce((a,c)=>a+((b?HB:HW)[c-32]||0),0)*z/1000;
+function jpgInfo(url){const b=Uint8Array.from(atob(url.split(',')[1]),c=>c.charCodeAt(0));let i=2;while(i<b.length){if(b[i]!==255){i++;continue}const m=b[i+1];if(m>=192&&m<=207&&m!==196&&m!==200&&m!==204)return{bytes:b,h:b[i+5]*256+b[i+6],w:b[i+7]*256+b[i+8],n:b[i+9]};i+=2+b[i+2]*256+b[i+3]}return null}
+function pdfNew(){const W=595.28,H=841.89,pg=[];let ops=null,img=null;
+ const col=c=>{c=c||'#000000';return[1,3,5].map(i=>(parseInt(c.slice(i,i+2),16)/255).toFixed(3)).join(' ')},n2=v=>(+v).toFixed(2);
+ const d={W,H,
+  page(){ops=[];pg.push(ops)},
+  text(x,y,s,z,o){o=o||{};const w=pdfW(s,z,o.b);if(o.al==='r')x-=w;else if(o.al==='c')x-=w/2;ops.push('BT /'+(o.b?'F2':'F1')+' '+z+' Tf '+col(o.c)+' rg '+n2(x)+' '+n2(H-y)+' Td <'+pdfBytes(s).map(c=>c.toString(16).padStart(2,'0')).join('')+'> Tj ET')},
+  line(x1,y1,x2,y2,w,c){ops.push(col(c)+' RG '+(w||.5)+' w '+n2(x1)+' '+n2(H-y1)+' m '+n2(x2)+' '+n2(H-y2)+' l S')},
+  rect(x,y,w,h,fill,stroke){ops.push((fill?col(fill)+' rg ':'')+(stroke?col(stroke)+' RG .5 w ':'')+n2(x)+' '+n2(H-y-h)+' '+n2(w)+' '+n2(h)+' re '+(fill&&stroke?'B':fill?'f':'S'))},
+  image(im,x,y,w,h){img=im;ops.push('q '+n2(w)+' 0 0 '+n2(h)+' '+n2(x)+' '+n2(H-y-h)+' cm /Im1 Do Q')},
+  build(foot){const N=pg.length;pg.forEach((o,i)=>{ops=o;foot&&foot(d,i+1,N)});
+   const te=new TextEncoder(),parts=[],off=[];let len=0;const push=u=>{parts.push(u);len+=u.length},ps=s=>push(te.encode(s)),ob=(n,s)=>{off[n]=len;ps(n+' 0 obj\n'+s+'\nendobj\n')};
+   ps('%PDF-1.4\n');const tot=5+2*N,kids=pg.map((_,i)=>(6+2*i)+' 0 R').join(' ');
+   ob(1,'<< /Type /Catalog /Pages 2 0 R >>');ob(2,'<< /Type /Pages /Kids [ '+kids+' ] /Count '+N+' >>');
+   ob(3,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');ob(4,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+   if(img){off[5]=len;ps('5 0 obj\n<< /Type /XObject /Subtype /Image /Width '+img.w+' /Height '+img.h+' /ColorSpace /'+(img.n===1?'DeviceGray':'DeviceRGB')+' /BitsPerComponent 8 /Filter /DCTDecode /Length '+img.bytes.length+' >>\nstream\n');push(img.bytes);ps('\nendstream\nendobj\n')}else ob(5,'null');
+   pg.forEach((o,i)=>{const c=o.join('\n');ob(6+2*i,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W+' '+H+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>'+(img?' /XObject << /Im1 5 0 R >>':'')+' >> /Contents '+(7+2*i)+' 0 R >>');
+    off[7+2*i]=len;ps((7+2*i)+' 0 obj\n<< /Length '+te.encode(c).length+' >>\nstream\n'+c+'\nendstream\nendobj\n')});
+   const xr=len;ps('xref\n0 '+(tot+1)+'\n0000000000 65535 f \n');for(let i=1;i<=tot;i++)ps(String(off[i]).padStart(10,'0')+' 00000 n \n');
+   ps('trailer\n<< /Size '+(tot+1)+' /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF');
+   const out=new Uint8Array(len);let p=0;for(const u of parts){out.set(u,p);p+=u.length}return out}};
+ return d}
+function pdfWrap(s,z,b,mw){const out=[];for(const para of String(s||'').split('\n')){let l='';for(const w of para.split(/\s+/).filter(Boolean)){const t=l?l+' '+w:w;if(pdfW(t,z,b)>mw&&l){out.push(l);l=w}else l=t}out.push(l)}return out.filter((x,i,a)=>x||i<a.length-1)}
+/* intestazione ditta: logo + nome + indirizzo/P.IVA; restituisce la y da cui continuare */
+function pdfHead(d,title,sub){const c=cf(),M=40,im=c.logo?jpgInfo(c.logo):null;let y=40,x=M,bot=y;
+ if(im){const h=Math.min(46,110*im.h/im.w),w=h*im.w/im.h;d.image(im,M,y,w,h);x=M+w+12;bot=y+h}
+ d.text(x,y+13,c.name||'Presenze & Ticket Pro',16,{b:1,c:'#1a2233'});let ty=y+13;
+ for(const l of pdfWrap(c.head,8.5,0,d.W-M-x).slice(0,4)){ty+=11;d.text(x,ty,l,8.5,{c:'#5b6578'})}
+ bot=Math.max(bot,ty);y=bot+10;d.line(M,y,d.W-M,y,1,'#4f46e5');y+=26;
+ d.text(M,y,title,14,{b:1,c:'#1a2233'});y+=15;if(sub){d.text(M,y,sub,10,{c:'#5b6578'});y+=8}return y+10}
+/* tabella con intestazione ripetuta; cols: [{h,w,al}], rows: [{c:[...],fill,b,col}] */
+function pdfTable(d,y,cols,rows){const M=40,RH=15,top=40,lim=d.H-70,TW=cols.reduce((a,c)=>a+c.w,0);
+ const head=yy=>{d.rect(M,yy,TW,RH+1,'#4f46e5');let x=M;for(const c of cols){d.text(c.al==='r'?x+c.w-5:x+5,yy+11,c.h,8.5,{b:1,c:'#ffffff',al:c.al});x+=c.w}return yy+RH+1};
+ y=head(y);for(const r of rows){if(y+RH>lim){d.page();y=head(top)}
+  if(r.fill)d.rect(M,y,TW,RH,r.fill);let x=M;
+  cols.forEach((c,i)=>{let s=String(r.c[i]??''),mw=c.w-10;while(s.length>1&&pdfW(s,8.5,r.b)>mw)s=s.slice(0,-1);d.text(c.al==='r'?x+c.w-5:x+5,y+10.5,s,8.5,{b:r.b,c:r.col,al:c.al});x+=c.w});
+  d.line(M,y+RH,M+TW,y+RH,.3,'#e2e7f1');y+=RH}
+ return y}
+const pdfFoot=(d,i,N)=>{d.line(40,d.H-42,d.W-40,d.H-42,.4,'#c9d0de');d.text(40,d.H-30,'Generato il '+new Date().toLocaleDateString('it-IT')+' alle '+hm(new Date())+' · '+(cf().name||'Presenze & Ticket Pro'),7.5,{c:'#7b8499'});d.text(d.W-40,d.H-30,'Pagina '+i+' di '+N,7.5,{c:'#7b8499',al:'r'})};
+function pdfSave(d,fn){if(!dl)return toast('Download non disponibile');dl.save({filename:fn,data:d.build(pdfFoot)}).catch(()=>{})}
+const GS=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+function repPdf(u,y,mo){const d=pdfNew(),n=new Date(y,mo+1,0).getDate(),r=calc(u,y,mo);d.page();
+ let yy=pdfHead(d,'Report presenze · '+MESI[mo]+' '+y,'Dipendente: '+nm(u)+(S.staff[u]?.email?' · '+S.staff[u].email:''));
+ const rows=[];for(let i=1;i<=n;i++){const t=new Date(y,mo,i,12),dt=ymd(t),wk=t.getDay()%6===0,x=S.days[u+'_'+dt],q=Object.values(S.reqs).find(q=>q.uid===u&&q.status==='approved'&&q.type!=='modifica'&&q.from<=dt&&dt<=q.to),
+  nt=wk?'Weekend':q?TL[q.type]+(q.type==='permesso'&&q.hours?' '+q.hours+' h':''):x&&x.in&&!x.out?'Uscita mancante':'';
+  rows.push({c:[GS[t.getDay()]+' '+pad(i)+'/'+pad(mo+1),x?.in||'',x?x.out||'':'',x?.in?String(x.pause||0)+' min':'',x?.out?f1(net(x)):'',x?.out&&ot(net(x))?f1(ot(net(x))):'',nt],fill:wk?'#f1f3f8':null,col:wk?'#8a93a6':null})}
+ yy=pdfTable(d,yy,[{h:'Data',w:80},{h:'Entrata',w:55,al:'r'},{h:'Uscita',w:55,al:'r'},{h:'Pausa',w:55,al:'r'},{h:'Ore nette',w:60,al:'r'},{h:'Straord.',w:55,al:'r'},{h:'Note',w:155}],rows);
+ if(yy>d.H-190){d.page();yy=50}yy+=18;const T=[['Lavoro',r.w],['Straordinario',r.o],['Permesso',r.p],['Ferie',r.f],['Malattia',r.s]],bw=(d.W-80-40)/5;
+ T.forEach(([l,v],i)=>{const x=40+i*(bw+10);d.rect(x,yy,bw,38,'#f1f3f8');d.text(x+8,yy+14,l,8.5,{c:'#5b6578'});d.text(x+8,yy+30,f1(v)+' h',13,{b:1,c:'#1a2233'})});
+ yy+=84;d.line(40,yy,230,yy,.6,'#1a2233');d.line(d.W-230,yy,d.W-40,yy,.6,'#1a2233');d.text(40,yy+12,'Firma del dipendente',8.5,{c:'#5b6578'});d.text(d.W-230,yy+12,'Firma del datore di lavoro',8.5,{c:'#5b6578'});
+ pdfSave(d,'report-'+y+'-'+pad(mo+1)+'-'+nm(u).replace(/[^\w.-]+/g,'_')+'.pdf')}
+function teamPdf(team,y,mo){const d=pdfNew();d.page();let yy=pdfHead(d,'Riepilogo team · '+MESI[mo]+' '+y,'Ore del mese per dipendente');
+ const sum=i=>team.reduce((a,t)=>a+(+String(t[i]).replace(',','.')||0),0);
+ yy=pdfTable(d,yy,[{h:'Dipendente',w:195},{h:'Lavoro',w:64,al:'r'},{h:'Straord.',w:64,al:'r'},{h:'Permesso',w:64,al:'r'},{h:'Ferie',w:64,al:'r'},{h:'Malattia',w:64,al:'r'}],
+  [...team.map((t,i)=>({c:[t[0],...t.slice(2)],fill:i%2?'#f8f9fc':null})),{c:['Totale',...[2,3,4,5,6].map(i=>f1(sum(i)))],b:1,fill:'#e8ebf5'}]);
+ pdfSave(d,'team-'+y+'-'+pad(mo+1)+'.pdf')}
 /* viste */
 const repIds=()=>{const has=new Set(Object.values(S.days).map(d=>d.uid));return allIds().filter(k=>!S.staff[k]||S.staff[k].canPunch!==false||has.has(k))};
 const pick=(rp)=>{if(!isA())return null;const L=rp?repIds():allIds(),v=L.includes(S.sel||uid)?S.sel||uid:L[0];const s=E('select',{class:'sel',onchange:()=>{S.sel=s.value;render()}},opts(L.map(k=>[k,nm(k)]),v));return s};
@@ -223,9 +282,9 @@ function vRep(){const u=!isA()?uid:repIds().includes(S.sel||uid)?S.sel||uid:repI
  const team=isA()?repIds().map(k=>[k,calc(k,y,mo)]).filter(([k,c])=>S.staff[k]||c.w+c.o+c.p+c.f+c.s>0).map(([k,c])=>[nm(k),(S.staff[k]||S.ex[k]||{}).email||'',f1(c.w),f1(c.o),f1(c.p),f1(c.f),f1(c.s)]):[];
  const th=a=>E('tr',{},a.map(x=>E('th',{},x))),td=a=>E('tr',{},a.map(x=>E('td',{},x)));
  return E('div',{},pick(1),E('div',{class:'card'},mnav(),E('div',{class:'row'},tot.map(([l,v])=>stat(l,f1(v)+' h'))),
-  E('div',{class:'row',style:'margin-top:10px'},E('button',{class:'btn sm',onclick:()=>csv([['Dipendente',nm(u)],['Mese',MESI[mo]+' '+y],[],['Data','Entrata','Uscita','Pausa min','Ore nette','Ore lavoro','Straordinario'],...rows,[],['Totali ore'],...tot.map(([l,v])=>[l,f1(v)])],`report-${y}-${pad(mo+1)}-${nm(u)}.csv`)},'📥 Esporta CSV'))),
+  E('div',{class:'row',style:'margin-top:10px'},E('button',{class:'btn sm',onclick:()=>csv([['Dipendente',nm(u)],['Mese',MESI[mo]+' '+y],[],['Data','Entrata','Uscita','Pausa min','Ore nette','Ore lavoro','Straordinario'],...rows,[],['Totali ore'],...tot.map(([l,v])=>[l,f1(v)])],`report-${y}-${pad(mo+1)}-${nm(u)}.csv`)},'📥 Esporta CSV'),E('button',{class:'btn sm',onclick:()=>repPdf(u,y,mo)},'📄 Esporta PDF'))),
   E('div',{class:'card'},E('h2',{},'Presenze del mese'),E('table',{},th(['Data','Entr.','Usc.','Pausa','Nette','Lavoro','Straord.']),rows.map(td),rows.length?null:E('tr',{},E('td',{colspan:7},'Nessuna presenza.')))),
-  isA()?E('div',{class:'card'},E('div',{class:'row sp'},E('h2',{},'Riepilogo team (ore)'),E('button',{class:'btn gh sm',onclick:()=>csv([['Dipendente','Email','Lavoro','Straordinario','Permesso','Ferie','Malattia'],...team],`team-${y}-${pad(mo+1)}.csv`)},'📥 CSV team')),
+  isA()?E('div',{class:'card'},E('div',{class:'row sp'},E('h2',{},'Riepilogo team (ore)'),E('div',{class:'row'},E('button',{class:'btn gh sm',onclick:()=>csv([['Dipendente','Email','Lavoro','Straordinario','Permesso','Ferie','Malattia'],...team],`team-${y}-${pad(mo+1)}.csv`)},'📥 CSV'),E('button',{class:'btn gh sm',onclick:()=>teamPdf(team,y,mo)},'📄 PDF'))),
    E('table',{},th(['Dipendente','Lavoro','Straord.','Perm.','Ferie','Mal.']),team.map(t=>td([t[0],...t.slice(2)])))):null)}
 function vTeam(){const gn=k=>Object.values(S.groups).filter(g=>(g.members||[]).includes(k)).map(g=>g.name),gl=Object.values(S.groups).sort((a,b)=>(a.name||'').localeCompare(b.name||'')),ids=Object.keys(S.staff).sort((a,b)=>nm(a).localeCompare(nm(b)));
  const canEd=(k,s)=>(role==='super'&&k!==uid)||(role==='admin'&&s.role==='user');
@@ -266,7 +325,8 @@ const FAQ=[
 ['Cosa possono fare i ruoli?','Utente: timbra e gestisce le proprie richieste e i propri ticket, secondo i permessi dati. Admin e Proprietario: vedono tutto, approvano richieste, assegnano ticket, gestiscono il team e i report. Il Proprietario può anche cambiare i ruoli e le impostazioni della ditta.'],
 ['Il Proprietario deve timbrare?','Dipende da lui: nella sua scheda in Team l\'interruttore «Voglio timbrare anch\'io» decide se vede i pulsanti di timbratura, riceve i promemoria e compare nei report.'],
 ['Come cedo la proprietà?','Il Proprietario, nella sua scheda in Team, usa «Trasferisci la proprietà a un altro Admin». Il nuovo Proprietario deve essere un Admin attivo che ha già fatto l\'accesso; chi cede diventa Admin.'],
-['Dove trovo i report?','Nella scheda Report scegli mese e persona: vedi ore, straordinari, ferie, malattie e permessi, ed esporti il file CSV per il consulente.']
+['Dove trovo i report?','Nella scheda Report scegli mese e persona: vedi ore, straordinari, ferie, malattie e permessi. Puoi esportare un PDF con l\'intestazione della ditta (logo, indirizzo, P.IVA), con le firme in fondo, oppure il file CSV per il consulente. C\'è anche il PDF riepilogativo di tutto il team.'],
+['Come metto il logo della ditta?','Il Proprietario apre Team → Impostazioni, carica il logo e scrive l\'intestazione (indirizzo, P.IVA, contatti). Il logo compare in alto nell\'app e nell\'intestazione dei PDF.']
 ];
 function faqModal(){modal('❓ Domande frequenti',E('div',{class:'faq'},...FAQ.map(([q,a])=>E('details',{},E('summary',{},q),E('p',{},a)))),[E('button',{class:'btn',onclick:close},'Chiudi')])}
 function transferModal(){const ad=Object.keys(S.staff).filter(k=>k!==uid&&S.staff[k].role==='admin'&&S.staff[k].active!==false&&S.staff[k].joined!==false);
@@ -297,7 +357,7 @@ function notifPanel(){const l=myN(),un=l.filter(n=>!n.read).length,box=E('div',{
    E('div',{class:'row',style:'margin-top:8px'},pend?[E('button',{class:'btn ok sm',onclick:async()=>{await decide(q,'approved');again()}},'✔ Approva'),E('button',{class:'btn er sm',onclick:async()=>{await decide(q,'rejected');again()}},'✖ Rifiuta')]:null,n.kind==='ticket'?E('button',{class:'btn sm',onclick:async()=>{await run(db.doc('notifs/'+n.id).update({read:true}));S.tab='tix';close();render()}},'🎫 Apri i ticket'):null,!n.read?E('button',{class:'btn gh sm',onclick:async()=>{await run(db.doc('notifs/'+n.id).update({read:true}));again()}},'Segna letta'):null)))});
  modal('🔔 Notifiche'+(un?' ('+un+' da leggere)':''),l.length?box:E('p',{class:'mu'},'Nessuna notifica.'),[un?E('button',{class:'btn gh',onclick:async()=>{for(const n of l.filter(x=>!x.read))await db.doc('notifs/'+n.id).update({read:true}).catch(()=>{});again()}},'Segna tutte lette'):null,E('button',{class:'btn',onclick:close},'Chiudi')])}
 function render(){if(!uid)return;role=owner?'super':S.staff[uid]?.role||'user';const y=scrollY;
- $('#who').textContent=nm(uid);{const un=myN().filter(n=>!n.read).length;$('#bell').textContent='🔔'+(un?' '+un:'')}$('header h1').textContent='⏱️ '+(cf().name||'Presenze & Ticket Pro');$('#role').textContent={super:'Proprietario',admin:'Admin',user:'Utente'}[role];
+ $('#who').textContent=nm(uid);{const un=myN().filter(n=>!n.read).length;$('#bell').textContent='🔔'+(un?' '+un:'')}{const L=$('#logo'),lg=cf().logo;if(lg){if(L.getAttribute('src')!==lg)L.src=lg;L.hidden=false}else{L.hidden=true;L.removeAttribute('src')}$('header h1').textContent=(lg?'':'⏱️ ')+(cf().name||'Presenze & Ticket Pro');document.title=cf().name?cf().name+' · Presenze':'Presenze & Ticket Pro'}$('#role').textContent={super:'Proprietario',admin:'Admin',user:'Utente'}[role];
  const tabs=[['oggi','⏱️','Oggi'],['cal','📅','Calendario'],['req','📝','Richieste'],['tix','🎫','Ticket'],['rep','📊','Report'],...(isA()?[['team','👥','Team']]:[])];
  const pend=Object.values(S.reqs).filter(q=>q.status==='pending').length;
  $('#nav').replaceChildren(...tabs.map(([k,i,l])=>E('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.sel=null;render()}},E('span',{},i),l,k==='req'&&isA()&&pend?E('i',{},pend):null)));
@@ -329,9 +389,11 @@ function fix(l,i){if(i>=l.length){close();toast('Tutto a posto ✅');return}cons
 function emailModal(){const st=S.staff[uid]||{},re=/^\S+@\S+\.\S+$/,e=E('input',{type:'email',value:st.email||me?.email||'',readonly:!!(st.email||me?.email),placeholder:'nome@azienda.it'}),n=E('input',{value:st.name||me?.name||''}),ce=E('input',{type:'email',value:st.calEmail||st.email||me?.email||'',placeholder:'email del tuo calendario'}),cs=E('select',{},opts([['1','Sì, sincronizza i ticket'],['0','No, non sincronizzare']],st.calSync===false?'0':'1'));
  modal(st.email?'Profilo e calendario':'Registrazione',E('div',{},E('p',{class:'mu'},'Con la sincronizzazione attiva potrai aggiungere i ticket al tuo calendario con il promemoria.'),fld('Nome e cognome',n),fld('Email',e),fld('Email del calendario',ce),fld('Sincronizzare i ticket con il calendario?',cs)),
  [st.email?cancel():null,E('button',{class:'btn',onclick:()=>{if(!re.test(e.value))return toast('Email non valida');if(cs.value==='1'&&!re.test(ce.value))return toast('Email del calendario non valida');run(db.doc('staff/'+uid).update({email:e.value.trim(),name:n.value.trim(),calEmail:ce.value.trim(),calSync:cs.value==='1'}));close();if(role==='super'&&!S.settings.company)setTimeout(()=>setModal(true),300)}},'Salva')])}
-function setModal(first){const c=cf(),nI=E('input',{value:c.name,placeholder:'Nome della ditta'}),i=E('input',{type:'time',value:c.in}),o=E('input',{type:'time',value:c.out}),p=E('select',{},opts(PAUSES,c.pause)),t=E('select',{},opts([[0,'Subito'],[15,'Da 15 minuti'],[30,'Da 30 minuti'],[60,'Da 60 minuti']],c.ot));
- modal(first?'Benvenuto! Imposta la tua ditta':'Impostazioni ditta',E('div',{},fld('Nome ditta',nI),fld('Orario di entrata',i),fld('Orario di uscita',o),fld('Pausa predefinita',p),fld('Straordinario conteggiato',t),E('p',{class:'mu'},'Gli orari servono per i promemoria, le ore giornaliere e lo straordinario.')),
- [first?null:cancel(),E('button',{class:'btn',onclick:()=>{if(!nI.value.trim())return toast('Inserisci il nome della ditta');if(mn(o.value)-mn(i.value)-+p.value<=0)return toast('Orari non validi');run(db.doc('settings/company').set({name:nI.value.trim(),in:i.value,out:o.value,pause:+p.value,ot:+t.value}));close()}},'Salva')])}
+async function logoPrep(f){const u=await new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=ko;r.readAsDataURL(f)}),im=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=u}),k=Math.min(1,360/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*k)),h=Math.max(1,Math.round(im.height*k)),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);return c.toDataURL('image/jpeg',.88)}
+function setModal(first){const c=cf(),nI=E('input',{value:c.name,placeholder:'Nome della ditta'}),i=E('input',{type:'time',value:c.in}),o=E('input',{type:'time',value:c.out}),p=E('select',{},opts(PAUSES,c.pause)),t=E('select',{},opts([[0,'Subito'],[15,'Da 15 minuti'],[30,'Da 30 minuti'],[60,'Da 60 minuti']],c.ot)),hd=E('textarea',{rows:3,placeholder:'Indirizzo, P.IVA, telefono, email…'},c.head);let lg=c.logo;
+ const pv=E('img',{style:'max-height:56px;max-width:140px;border:1px solid var(--bd);border-radius:8px;background:#fff;padding:3px',alt:''}),sh=()=>{pv.style.display=lg?'':'none';rm.style.display=lg?'':'none'},fi=E('input',{type:'file',accept:'image/*',onchange:async()=>{const f=fi.files[0];if(!f)return;try{lg=await logoPrep(f);pv.src=lg;sh()}catch(e){toast('Immagine non valida')}fi.value=''}}),rm=E('button',{class:'btn gh sm',onclick:()=>{lg='';sh()}},'Rimuovi logo');pv.src=lg||'';sh();
+ modal(first?'Benvenuto! Imposta la tua ditta':'Impostazioni ditta',E('div',{},fld('Nome ditta',nI),fld('Intestazione dei documenti',hd),fld('Logo (usato nell\'app e nei PDF)',E('div',{},E('div',{class:'row',style:'margin-bottom:6px'},pv,rm),fi)),fld('Orario di entrata',i),fld('Orario di uscita',o),fld('Pausa predefinita',p),fld('Straordinario conteggiato',t),E('p',{class:'mu'},'Gli orari servono per i promemoria, le ore giornaliere e lo straordinario.')),
+ [first?null:cancel(),E('button',{class:'btn',onclick:()=>{if(!nI.value.trim())return toast('Inserisci il nome della ditta');if(mn(o.value)-mn(i.value)-+p.value<=0)return toast('Orari non validi');run(db.doc('settings/company').set({name:nI.value.trim(),in:i.value,out:o.value,pause:+p.value,ot:+t.value,head:hd.value.trim(),logo:lg||''}));close()}},'Salva')])}
 function calModal(t){const tm=t.time||cf().in,st=t.due.replace(/-/g,'')+'T'+tm.replace(':','')+'00',e=new Date(t.due+'T'+tm+':00');e.setHours(e.getHours()+1);
  const en=ymd(e).replace(/-/g,'')+'T'+hm(e).replace(':','')+'00',esc=s=>String(s||'').replace(/\\/g,'\\\\').replace(/[,;]/g,'\\$&').replace(/\r?\n/g,'\\n'),rem=+t.rem||0;
  const g='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t.title)+'&details='+encodeURIComponent(t.desc||'')+'&dates='+st+'/'+en+(S.staff[uid]?.calEmail?'&authuser='+encodeURIComponent(S.staff[uid].calEmail):'');
