@@ -19,3 +19,26 @@ self.addEventListener('fetch', e => {
       .catch(() => caches.match(r).then(m => m || caches.match('./index.html')))
   );
 });
+
+// Notifiche push (arrivano anche ad app chiusa)
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data.json(); } catch (_) { d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => {
+      if (l.some(c => c.visibilityState === 'visible')) return; // app aperta: ci pensa già lei
+      return self.registration.showNotification(d.title || 'Presenze & Ticket Pro', {
+        body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png',
+        tag: d.tag || undefined, renotify: !!d.tag, data: { url: d.url || './' }
+      });
+    })
+  );
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const u = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => {
+    for (const c of l) if (c.url.startsWith(self.registration.scope) && 'focus' in c) return c.focus();
+    return self.clients.openWindow(u);
+  }));
+});

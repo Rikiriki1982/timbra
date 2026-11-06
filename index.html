@@ -85,9 +85,10 @@ const login=()=>new Promise(res=>{const m=ov('<h2>🔐 Accedi</h2><label class="
 const user={me:async()=>{let s=(await sb.auth.getSession()).data.session;if(NEEDPW&&s)await setPw();if(!s)s=await login();const u=s.user;
  document.querySelector('header span').append(Object.assign(document.createElement('button'),{className:'badge',textContent:'Esci',style:'border:0;color:#fff;cursor:pointer',onclick:async()=>{await sb.auth.signOut();location.reload()}}));
  return{id:u.id,email:u.email,name:u.user_metadata?.name||''}},isOwner:async()=>false};
+const push={key:CFG.vapid||'',save:async s=>{const me=(await sb.auth.getSession()).data.session?.user;if(!me)return;const j=s.toJSON?s.toJSON():s;const{error}=await sb.from('push_subs').upsert({user_id:me.id,endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth,ua:navigator.userAgent.slice(0,200)},{onConflict:'endpoint'});if(error)throw error},remove:async ep=>{await sb.from('push_subs').delete().eq('endpoint',ep)}};
 const invite=async b=>{const{data,error}=await sb.functions.invoke('invite-user',{body:b});if(error){let m=error.message;try{const j=await error.context.json();if(j?.error)m=j.error}catch(e){}throw new Error(m)}if(data?.error)throw new Error(data.error);subs.forEach(f=>f());return data};
 const dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':'text/csv'}));a.download=filename;document.body.append(a);a.click();a.remove();return'saved'}};
-window.claude={use:async n=>({user,db,downloads:dl,invite})[n]||null};
+window.claude={use:async n=>({user,db,downloads:dl,invite,push})[n]||null};
 })()}
 /* Modalità autonoma: dati salvati nel browser di questo dispositivo */
 if(typeof claude==='undefined'){(()=>{
@@ -172,8 +173,8 @@ function vOggi(){const n=new Date(),d=S.days[uid+'_'+today()];
   ab?E('div',{class:'tag '+ab.type,style:'background:var(--'+(ab.type==='ferie'?'fe':ab.type==='malattia'?'ma':'pe')+')'},'Oggi: '+TL[ab.type]):null,
   E('div',{class:'row'},stat('Entrata',d?.in||'--:--'),stat('Uscita',d?.out||'--:--'),stat('Ore nette',d?.out?f1(net(d)):'—')),
   P('canPunch')?null:E('p',{class:'mu'},'La timbratura non è abilitata per il tuo profilo. Contatta un amministratore.'),E('div',{class:'row'},E('button',{class:'btn ok',disabled:!!d?.in||!P('canPunch'),onclick:punchIn},'🟢 Timbra entrata'),E('button',{class:'btn er',disabled:!d?.in||!!d?.out||!P('canPunch'),onclick:punchOut},'🔴 Timbra uscita'))),
-  E('div',{class:'card'},E('b',{},'🔔 Promemoria'),E('p',{class:'mu'},'Se all\'orario di entrata ('+cf().in+') non hai timbrato, e all\'orario di uscita ('+cf().out+') non hai chiuso la giornata, l\'app ti avvisa con un popup e ti chiede a che ora.'),
-   typeof Notification!=='undefined'&&Notification.permission==='default'?E('button',{class:'btn gh sm',onclick:()=>Notification.requestPermission().then(render)},'Attiva notifiche del dispositivo'):null,
+  E('div',{class:'card'},E('b',{},'🔔 Promemoria'),E('p',{class:'mu'},'Se all\'orario di entrata ('+cf().in+') non hai timbrato, e all\'orario di uscita ('+cf().out+') non hai chiuso la giornata, l\'app ti avvisa con un popup e ti chiede a che ora. Con le notifiche attive il promemoria arriva anche ad app chiusa.'),
+   canPush()?(pushOn?E('button',{class:'btn gh sm',onclick:pushOff},'🔕 Disattiva notifiche su questo dispositivo'):E('button',{class:'btn sm',onclick:pushEnable},'🔔 Attiva notifiche (anche ad app chiusa)')):pushApi&&pushApi.key&&isIOS()&&!isStd()?E('p',{class:'mu'},'Su iPhone le notifiche funzionano solo dopo aver installato l\'app sulla schermata Home (tasto «Installa» in alto).'):typeof Notification!=='undefined'&&Notification.permission==='default'?E('button',{class:'btn gh sm',onclick:()=>Notification.requestPermission().then(render)},'Attiva notifiche del dispositivo'):null,
    E('button',{class:'btn gh sm',onclick:()=>checkMissing()||toast('Nessun giorno mancante ✅')},'Controlla giorni mancanti'),' ',E('button',{class:'btn gh sm',onclick:()=>remind(true)},'Prova popup'),' ',E('button',{class:'btn gh sm',onclick:()=>emailModal()},'👤 Profilo e calendario')))}
 function qd(q){if(q.type!=='modifica')return'';const a=q.as||'work';return q.off||a==='off'?' · non lavorato':a==='work'?' · '+q.in+' → '+(q.out||'…')+' · pausa '+(q.pause||0)+' min':' · '+TL[a]+(a==='permesso'?' '+q.hours+' h/giorno':'')}
 function chgModal(dt){const d=S.days[uid+'_'+dt]||{},cr=P('canRequest'),RG=['ferie','malattia','permesso'];
@@ -309,25 +310,35 @@ function calModal(t){const tm=t.time||cf().in,st=t.due.replace(/-/g,'')+'T'+tm.r
  modal('📅 Aggiungi al calendario',E('div',{},E('p',{},t.title+' · '+t.due+' '+tm),E('p',{class:'mu'},'Il file .ics (Apple, Outlook, Google) include il promemoria'+(rem?' ('+(rem>=1440?'1 giorno':rem>=60?'1 ora':rem+' minuti')+' prima)':'')+'. Il link di Google Calendar non può impostare promemoria.')),
  [cancel(),E('a',{class:'btn gh',href:g,target:'_blank',rel:'noopener',style:'text-decoration:none',onclick:()=>setTimeout(close,150)},'Google Calendar'),E('button',{class:'btn',onclick:()=>{if(!dl)return toast('Download non disponibile');dl.save({filename:'ticket-'+t.due+'.ics',data:ics}).catch(()=>{});close()}},'File .ics')])}
 /* installazione come app (Android e iPhone) */
-let ip=null,snz=0;const isStd=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true,isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),
- snoozed=()=>{try{return+localStorage.getItem('pwa_snooze')>Date.now()}catch(e){return snz>Date.now()}};
-function instBar(){const b=$('#inst');if(!b)return;if(isStd()||snoozed())return b.replaceChildren();
- b.replaceChildren(E('div',{class:'inst'},E('span',{},'📲 Installa l\'app sul telefono'),E('button',{class:'btn sm',onclick:instGo},'Installa'),E('button',{class:'x','aria-label':'Chiudi',onclick:()=>{const t=Date.now()+3*864e5;snz=t;try{localStorage.setItem('pwa_snooze',t)}catch(e){}instBar()}},'✕')))}
+let ip=null,pushApi=null,pushOn=false;const snz={},isStd=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true,isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),
+ snoozed=k=>{try{return+localStorage.getItem(k)>Date.now()}catch(e){return(snz[k]||0)>Date.now()}},
+ canPush=()=>!!(pushApi&&pushApi.key&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window&&(!isIOS()||isStd())),
+ u8=b=>Uint8Array.from(atob((b+'='.repeat((4-b.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+function bar(txt,lbl,fn,k){return E('div',{class:'inst'},E('span',{},txt),E('button',{class:'btn sm',onclick:fn},lbl),E('button',{class:'x','aria-label':'Chiudi',onclick:()=>{const t=Date.now()+3*864e5;snz[k]=t;try{localStorage.setItem(k,t)}catch(e){}instBar()}},'✕'))}
+function instBar(){const b=$('#inst');if(!b)return;const a=[];
+ if(!isStd()&&!snoozed('pwa_snooze'))a.push(bar('📲 Installa l\'app sul telefono','Installa',instGo,'pwa_snooze'));
+ if(canPush()&&!pushOn&&Notification.permission!=='denied'&&!snoozed('push_snooze'))a.push(bar('🔔 Ricevi i promemoria anche ad app chiusa','Attiva',pushEnable,'push_snooze'));
+ b.replaceChildren(...a)}
+async function pushState(){if(!canPush())return;try{const r=await navigator.serviceWorker.ready,s=await r.pushManager.getSubscription();pushOn=!!s&&Notification.permission==='granted';if(pushOn)pushApi.save(s).catch(()=>{})}catch(e){}instBar()}
+async function pushEnable(){try{if(Notification.permission==='denied')return modal('🔔 Notifiche bloccate',E('p',{},'Le notifiche sono bloccate per questo sito. Aprile dalle impostazioni del browser (icona del lucchetto accanto all\'indirizzo, oppure Impostazioni → Notifiche → Presenze) e consentile, poi riprova.'),[E('button',{class:'btn',onclick:close},'Ho capito')]);
+ if(await Notification.requestPermission()!=='granted')return toast('Notifiche non consentite');
+ const r=await navigator.serviceWorker.ready,s=await r.pushManager.getSubscription()||await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(pushApi.key)});await pushApi.save(s);pushOn=true;toast('Notifiche attive ✅');instBar();render()}catch(e){err(e)}}
+async function pushOff(){try{const r=await navigator.serviceWorker.ready,s=await r.pushManager.getSubscription();if(s){await pushApi.remove(s.endpoint);await s.unsubscribe()}pushOn=false;toast('Notifiche disattivate');instBar();render()}catch(e){err(e)}}
 async function instGo(){if(ip){const e=ip;ip=null;try{e.prompt();await e.userChoice}catch(x){}instBar();return}
  const st=isIOS()?['Apri questa pagina con <b>Safari</b> (se arrivi da WhatsApp o da un\'altra app, tocca «Apri in Safari»).','Tocca il pulsante <b>Condividi</b> (il quadrato con la freccia verso l\'alto: in basso su iPhone, in alto a destra se usi Chrome).','Scorri e tocca <b>«Aggiungi alla schermata Home»</b>, poi <b>Aggiungi</b>.']
   :['Apri questa pagina con <b>Chrome</b>.','Tocca i tre puntini <b>⋮</b> in alto a destra.','Tocca <b>«Installa app»</b> (o «Aggiungi a schermata Home») e poi <b>Installa</b>.'];
  const ol=E('ol',{class:'steps'});ol.innerHTML=st.map(x=>'<li>'+x+'</li>').join('');
- modal('📲 Installa l\'app su '+(isIOS()?'iPhone / iPad':'Android'),E('div',{},E('p',{},'Così trovi l\'icona tra le tue app e si apre a schermo intero, senza barra del browser.'),ol),[E('button',{class:'btn',onclick:close},'Ho capito')])}
+ modal('📲 Installa l\'app su '+(isIOS()?'iPhone / iPad':'Android'),E('div',{},E('p',{},'Così trovi l\'icona tra le tue app e si apre a schermo intero, senza barra del browser.'),ol,isIOS()?E('p',{class:'mu'},'Poi apri l\'app dall\'icona e attiva le notifiche: su iPhone funzionano solo così (serve iOS 16.4 o più recente).'):null),[E('button',{class:'btn',onclick:close},'Ho capito')])}
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;instBar()});addEventListener('appinstalled',()=>{ip=null;instBar();toast('App installata ✅')});instBar();
 /* avvio */
-(async()=>{try{if(typeof claude==='undefined'){$('#v').replaceChildren(E('div',{class:'card'},'Questa pagina funziona solo aprendo il link dell\'artifact dall\'app o dal sito di Claude, non come file scaricato. Riapri il link da Claude.'));return}const user=await claude.use('user');db=await claude.use('db');dl=await claude.use('downloads');try{inv=await claude.use('invite')}catch(e){inv=null}
+(async()=>{try{if(typeof claude==='undefined'){$('#v').replaceChildren(E('div',{class:'card'},'Questa pagina funziona solo aprendo il link dell\'artifact dall\'app o dal sito di Claude, non come file scaricato. Riapri il link da Claude.'));return}const user=await claude.use('user');db=await claude.use('db');dl=await claude.use('downloads');try{inv=await claude.use('invite')}catch(e){inv=null}try{pushApi=await claude.use('push')}catch(e){pushApi=null}
  if(!user||!db){$('#v').replaceChildren(E('div',{class:'card'},'Per usare l\'app apri il link da claude.ai con il tuo account (serve l\'accesso per registrare email e presenze).'));return}
  me=await user.me();uid=me.id;owner=await user.isOwner();if(!uid){$('#v').replaceChildren(E('div',{class:'card'},'Accesso non riconosciuto: accedi a claude.ai e riapri la pagina.'));return}
  const ref=db.doc('staff/'+uid),s=await ref.get(),cur=s.exists?s.data():{},b=Object.fromEntries(Object.entries({email:me.email,name:me.name}).filter(([k,v])=>v&&!cur[k]));
  if(cur.active===false){$('#v').replaceChildren(E('div',{class:'card'},'Il tuo account è stato disattivato. Contatta l\'amministratore.'));return}
  if(!s.exists)await ref.set({...b,role:owner?'super':'user',created:Date.now()});else{const u={...b,...(owner&&cur.role!=='super'?{role:'super'}:{})};if(Object.keys(u).length)await ref.update(u)}
  for(const c of['staff','days','reqs','tix','groups','ex','settings','notifs'])db.collection(c).onSnapshot(sn=>{S[c]=Object.fromEntries(sn.docs.map(d=>[d.id,{...d.data(),id:d.id}]));render()},err);
- render();setInterval(()=>{const c=$('#clk');if(c)c.textContent=hm(new Date());remind()},20000);document.addEventListener('visibilitychange',()=>!document.hidden&&(checkMissing()||remind()));setTimeout(()=>{const st=S.staff[uid]||{};if(!st.email||st.calSync===undefined)emailModal();else if(role==='super'&&!S.settings.company)setModal(true);else if(!checkMissing())remind()},1500)
+ render();pushState();setInterval(()=>{const c=$('#clk');if(c)c.textContent=hm(new Date());remind()},20000);document.addEventListener('visibilitychange',()=>!document.hidden&&(checkMissing()||remind()));setTimeout(()=>{const st=S.staff[uid]||{};if(!st.email||st.calSync===undefined)emailModal();else if(role==='super'&&!S.settings.company)setModal(true);else if(!checkMissing())remind()},1500)
 }catch(e){$('#v').replaceChildren(E('div',{class:'card'},'Errore di avvio: '+e.message))}})();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>
