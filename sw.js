@@ -26,7 +26,8 @@ self.addEventListener('push', e => {
   try { d = e.data.json(); } catch (_) { d = { body: e.data ? e.data.text() : '' }; }
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => {
-      if (l.some(c => c.visibilityState === 'visible')) return; // app aperta: ci pensa già lei
+      const v = l.filter(c => c.visibilityState === 'visible');
+      if (v.length) { v.forEach(c => c.postMessage({ type: 'push', title: d.title, body: d.body })); return; } // app aperta: avviso dentro l'app
       return self.registration.showNotification(d.title || 'Presenze & Ticket Pro', {
         body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png',
         tag: d.tag || undefined, renotify: !!d.tag, data: { url: d.url || './' }
