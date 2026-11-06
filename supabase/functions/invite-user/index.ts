@@ -26,6 +26,24 @@ Deno.serve(async (req) => {
 
     const b = await req.json()
 
+    // passaggio di proprietà: il Proprietario diventa Admin e l'Admin scelto diventa Proprietario
+    if (b.action === 'transfer') {
+      if (me.role !== 'super') return json({ error: 'Solo il Proprietario può trasferire la proprietà' }, 403)
+      const id = String(b.id ?? '')
+      if (!id || id === user.id) return json({ error: 'Scegli un altro utente' }, 400)
+      const { data: t } = await admin.from('profiles').select('id,role,active,joined').eq('id', id).maybeSingle()
+      if (!t || t.role !== 'admin' || !t.active || !t.joined) return json({ error: 'Il nuovo Proprietario deve essere un Admin attivo che ha già fatto l\'accesso' }, 400)
+      const { error: e1 } = await admin.from('profiles').update({ role: 'admin' }).eq('id', user.id)
+      if (e1) return json({ error: e1.message }, 400)
+      const { error: e2 } = await admin.from('profiles').update({ role: 'super' }).eq('id', id)
+      if (e2) {
+        await admin.from('profiles').update({ role: 'super' }).eq('id', user.id)   // annulla: la proprietà resta dov'era
+        return json({ error: e2.message }, 400)
+      }
+      await admin.from('notifications').insert({ kind: 'info', from_user: user.id, to_user: id, message: 'Sei il nuovo Proprietario: ora puoi gestire ditta, ruoli e permessi.' })
+      return json({ ok: true })
+    }
+
     // eliminazione di un utente (con o senza storico)
     if (b.action === 'delete') {
       const id = String(b.id ?? '')
