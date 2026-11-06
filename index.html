@@ -164,7 +164,8 @@ function ask(msg,fn,lbl){modal('Conferma',E('p',{},msg),[cancel(),E('button',{cl
 const showPh=src=>modal('Foto',E('img',{src,style:'width:100%;border-radius:10px'}),[cancel()]);
 function csv(rows,fn){const x=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');if(!dl)return toast('Download non disponibile');dl.save({filename:fn,data:'\ufeff'+x}).catch(()=>{})}
 /* viste */
-const pick=()=>{if(!isA())return null;const s=E('select',{class:'sel',onchange:()=>{S.sel=s.value;render()}},opts(allIds().map(k=>[k,nm(k)]),S.sel||uid));return s};
+const repIds=()=>{const has=new Set(Object.values(S.days).map(d=>d.uid));return allIds().filter(k=>!S.staff[k]||S.staff[k].canPunch!==false||has.has(k))};
+const pick=(rp)=>{if(!isA())return null;const L=rp?repIds():allIds(),v=L.includes(S.sel||uid)?S.sel||uid:L[0];const s=E('select',{class:'sel',onchange:()=>{S.sel=s.value;render()}},opts(L.map(k=>[k,nm(k)]),v));return s};
 const mnav=()=>E('div',{class:'row sp',style:'margin-bottom:10px'},E('button',{class:'btn gh sm',onclick:()=>{S.m=new Date(S.m.getFullYear(),S.m.getMonth()-1,1);render()}},'◀'),E('b',{},MESI[S.m.getMonth()]+' '+S.m.getFullYear()),E('button',{class:'btn gh sm',onclick:()=>{S.m=new Date(S.m.getFullYear(),S.m.getMonth()+1,1);render()}},'▶'));
 const stat=(l,v)=>E('div',{class:'stat'},E('span',{class:'mu'},l),E('b',{},v));
 function vOggi(){const n=new Date(),d=S.days[uid+'_'+today()];
@@ -216,12 +217,12 @@ function vTix(){const l=Object.values(S.tix).filter(t=>isA()||mineT(t,uid)).sort
     t.photo?E('img',{class:'ph',src:t.photo,onclick:()=>showPh(t.photo)}):null,
     E('div',{class:'row'},['Fare','Attesa','Fatto'].filter(k=>k!==s).map(k=>E('button',{class:'btn gh sm',onclick:()=>run(db.doc('tix/'+t.id).update({status:k}))},'→ '+{Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'}[k])),
      S.staff[uid]?.calSync&&t.due?E('button',{class:'btn gh sm',onclick:()=>calModal(t)},'📅 Calendario'):null,isA()||t.uid===uid?E('button',{class:'btn gh sm',onclick:()=>tixModal(t)},'✏️ Modifica'):null,isA()||t.uid===uid?E('button',{class:'btn gh sm',onclick:()=>ask('Eliminare il ticket?',()=>run(db.doc('tix/'+t.id).delete()))},'🗑 Elimina'):null))))}))}
-function vRep(){const u=S.sel||uid,y=S.m.getFullYear(),mo=S.m.getMonth(),r=calc(u,y,mo),n=new Date(y,mo+1,0).getDate(),rows=[];
+function vRep(){const u=!isA()?uid:repIds().includes(S.sel||uid)?S.sel||uid:repIds()[0]||uid,y=S.m.getFullYear(),mo=S.m.getMonth(),r=calc(u,y,mo),n=new Date(y,mo+1,0).getDate(),rows=[];
  for(let i=1;i<=n;i++){const dt=ymd(new Date(y,mo,i)),d=S.days[u+'_'+dt];if(d)rows.push([dt,d.in,d.out||'',d.pause||0,f1(net(d)),f1(Math.min(net(d),std())),f1(ot(net(d)))])}
  const tot=[['Lavoro',r.w],['Straordinario',r.o],['Permesso',r.p],['Ferie',r.f],['Malattia',r.s]];
- const team=isA()?allIds().map(k=>[k,calc(k,y,mo)]).filter(([k,c])=>S.staff[k]||c.w+c.o+c.p+c.f+c.s>0).map(([k,c])=>[nm(k),(S.staff[k]||S.ex[k]||{}).email||'',f1(c.w),f1(c.o),f1(c.p),f1(c.f),f1(c.s)]):[];
+ const team=isA()?repIds().map(k=>[k,calc(k,y,mo)]).filter(([k,c])=>S.staff[k]||c.w+c.o+c.p+c.f+c.s>0).map(([k,c])=>[nm(k),(S.staff[k]||S.ex[k]||{}).email||'',f1(c.w),f1(c.o),f1(c.p),f1(c.f),f1(c.s)]):[];
  const th=a=>E('tr',{},a.map(x=>E('th',{},x))),td=a=>E('tr',{},a.map(x=>E('td',{},x)));
- return E('div',{},pick(),E('div',{class:'card'},mnav(),E('div',{class:'row'},tot.map(([l,v])=>stat(l,f1(v)+' h'))),
+ return E('div',{},pick(1),E('div',{class:'card'},mnav(),E('div',{class:'row'},tot.map(([l,v])=>stat(l,f1(v)+' h'))),
   E('div',{class:'row',style:'margin-top:10px'},E('button',{class:'btn sm',onclick:()=>csv([['Dipendente',nm(u)],['Mese',MESI[mo]+' '+y],[],['Data','Entrata','Uscita','Pausa min','Ore nette','Ore lavoro','Straordinario'],...rows,[],['Totali ore'],...tot.map(([l,v])=>[l,f1(v)])],`report-${y}-${pad(mo+1)}-${nm(u)}.csv`)},'📥 Esporta CSV'))),
   E('div',{class:'card'},E('h2',{},'Presenze del mese'),E('table',{},th(['Data','Entr.','Usc.','Pausa','Nette','Lavoro','Straord.']),rows.map(td),rows.length?null:E('tr',{},E('td',{colspan:7},'Nessuna presenza.')))),
   isA()?E('div',{class:'card'},E('div',{class:'row sp'},E('h2',{},'Riepilogo team (ore)'),E('button',{class:'btn gh sm',onclick:()=>csv([['Dipendente','Email','Lavoro','Straordinario','Permesso','Ferie','Malattia'],...team],`team-${y}-${pad(mo+1)}.csv`)},'📥 CSV team')),
