@@ -7,11 +7,24 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== C).map(x => caches.delete(x)))));
+  e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x.startsWith('ptp-pages') && x !== C).map(x => caches.delete(x)))));
   self.clients.claim();
 });
 self.addEventListener('fetch', e => {
   const r = e.request, u = new URL(r.url);
+  if (r.method === 'POST' && u.origin === location.origin && u.pathname.endsWith('/share-target')) {
+    // contenuto condiviso da un'altra app (es. WhatsApp): lo teniamo da parte e apriamo l'app
+    e.respondWith((async () => {
+      try {
+        const fd = await r.formData(), c = await caches.open('ptp-share');
+        await c.put('meta', new Response(JSON.stringify({ title: fd.get('title') || '', text: fd.get('text') || '', url: fd.get('url') || '' })));
+        const f = fd.get('media');
+        if (f && f.size) await c.put('file', new Response(f, { headers: { 'content-type': f.type || 'application/octet-stream', 'x-name': encodeURIComponent(f.name || 'vocale') } }));
+      } catch (_) {}
+      return Response.redirect(new URL('./?share=1', self.registration.scope).href, 303);
+    })());
+    return;
+  }
   if (r.method !== 'GET' || u.origin !== location.origin) return;
   e.respondWith(
     fetch(r, { cache: 'no-cache' })
