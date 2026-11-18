@@ -128,6 +128,7 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
 .sheet .save{font-size:8.4pt;color:#1d7a46;text-align:right;margin-top:1.5mm;font-weight:600}
 .sheet .sign{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:12mm;font-size:8.6pt;break-inside:avoid}
 .sheet .sign div{border-top:1px solid var(--paper-ink);padding-top:1.5mm;color:#45505b}
+.sheet .pgfoot{margin-top:8mm;border-top:2px solid var(--paper-line,#a4c2f4);padding-top:2mm;font-size:7.2pt;color:#000}.sheet .pgfoot .pfn{font-weight:700;font-size:9.5pt;margin-bottom:1mm}.sheet .pgfoot .pfc{display:flex;justify-content:space-between;gap:10mm}.sheet .pgfoot .pfr{text-align:right}
 .sheet .foot{margin-top:8mm;font-size:7.6pt;color:#6a7580;border-top:1px solid var(--paper-line);padding-top:2mm;white-space:pre-line}
 
 /* ---------- Modello "Tabella" (stile Lumia) ---------- */
@@ -322,9 +323,12 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
      <button class="btn small danger" id="bLogoDel">Rimuovi</button>
     </div>
    </div>
-   <label class="f full">Ragione sociale<input id="a_nome"></label>
+   <label class="f full">Nome ditta (intestazione e app)<input id="a_nome"></label>
+   <label class="f full">Denominazione completa (piè di pagina)<input id="a_ragione" placeholder="es. Lumia Network SRL"></label>
    <label class="f">Partita IVA<input id="a_piva"></label>
    <label class="f">Codice fiscale<input id="a_cf"></label>
+   <label class="f">Capitale sociale<input id="a_capsoc" placeholder="es. IV 10 000,00 €"></label>
+   <label class="f">PEC<input id="a_pec"></label>
    <label class="f full">Sede legale<input id="a_sede"></label>
    <label class="f full">Sede operativa<input id="a_oper"></label>
    <label class="f">Telefono<input id="a_tel"></label>
@@ -335,7 +339,8 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
    <label class="f">Formato numero<select id="a_formato"><option value="n">Solo numero (es. 130)</option><option value="anno">Numero/anno (es. 130/2026)</option></select></label>
    <label class="f">Prefisso numerazione<input id="a_pref" placeholder="facoltativo, es. PR"></label>
    <label class="f">Prossimo numero<input id="a_next" type="number" min="1"></label>
-   <label class="f full">Piè di pagina<textarea id="a_foot" rows="2"></textarea></label>
+   <label class="f full">Testo libero extra in fondo (facoltativo)<textarea id="a_foot" rows="2"></textarea></label>
+   <label class="f full">Nota predefinita sotto la tabella<textarea id="a_note" rows="2" placeholder="Compare in ogni nuovo preventivo sotto la tabella"></textarea></label>
    <label class="f full">Condizioni generali predefinite<textarea id="a_cond" rows="3"></textarea></label>
    <label class="f">Pagamento predefinito<input id="a_pag"></label>
    <label class="f">IVA predefinita %<input id="a_iva" type="number" min="0" step="0.5"></label>
