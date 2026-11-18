@@ -482,7 +482,7 @@ function refreshClientList(){const cl=store.get("clienti",[]);$("#dlClienti").in
 function setClient(o,overwrite){CF.forEach(k=>{if(o[k]!=null&&o[k]!==""&&(overwrite||!q.cliente[k]))q.cliente[k]=o[k]});CF.forEach(k=>$("#c_"+k).value=q.cliente[k]??"");changed()}
 $("#c_nome").addEventListener("change",()=>{const v=$("#c_nome").value.trim().toLowerCase();const c=store.get("clienti",[]).find(x=>x.nome.toLowerCase()===v);
   if(c){setClient(c,true);$("#viesMsg").textContent="Dati presi dai clienti salvati."}
-  $("#lnkPiva").href="https://www.google.com/search?q="+encodeURIComponent((v||"")+" partita iva sede legale")});
+  const lk=$("#lnkPiva");if(lk)lk.href="https://www.google.com/search?q="+encodeURIComponent((v||"")+" partita iva sede legale")});
 const tCase=s=>s.toLowerCase().replace(/(^|[\s'(\/-])([a-zà-ù])/g,(m,a,b)=>a+b.toUpperCase());
 function fmtAddr(a){const L=String(a||"").split("\n").map(x=>x.trim()).filter(Boolean);
   return L.map(l=>{const m=l.match(/^(\d{5})\s+(.+?)\s+([A-Z]{2})$/);return m?`${m[1]} ${tCase(m[2])} (${m[3]})`:tCase(l)}).join(", ")}
@@ -509,6 +509,33 @@ $("#bVies").onclick=async()=>{
   setClient({nome:nome&&nome!=="---"?nome:"",piva,legale:ind&&ind!=="---"?ind:""},true);
   msg.textContent="Dati trovati nel registro VIES (ragione sociale e sede legale). Completa sede esecutiva, PEC e codice SDI se servono.";
 };
+/* ricerca dal nome: enti pubblici (IPA), partita IVA (VIES) e, se attiva, ricerca web */
+const bNome=$("#bNome");
+function applyFound(r){
+  const c=q.cliente,o={nome:r.nome||"",piva:r.piva||"",legale:r.indirizzo||"",sdi:r.sdi||""};
+  if(r.pec&&!c.email)o.email=r.pec;
+  setClient(o,true);$("#nomeRes").textContent="";
+  $("#viesMsg").textContent="Dati trovati ("+r.fonte+"). Controlla che siano giusti"+" e completa sede esecutiva, referente e telefono se servono."}
+async function cercaNome(){
+  const msg=$("#viesMsg"),box=$("#nomeRes"),name=$("#c_nome").value.trim();box.textContent="";
+  if(name.length<3){msg.textContent="Scrivi almeno 3 lettere del nome.";return}
+  const saved=store.get("clienti",[]).find(x=>x.nome.toLowerCase()===name.toLowerCase());
+  if(saved){setClient(saved,true);msg.textContent="Cliente già presente: dati presi dai clienti salvati.";return}
+  if(!window.PREV_FN){msg.textContent="La ricerca per nome funziona dopo l'accesso nell'app (qui i dati restano solo su questo browser). Usa la partita IVA e «Cerca dati».";return}
+  bNome.disabled=true;bNome.textContent="Cerco…";msg.textContent="Cerco «"+name+"»…";
+  try{
+    const d=await window.PREV_FN("cerca-azienda",{q:name});const R=d.risultati||[];
+    if(!R.length){msg.textContent=d.nota||"Nessun risultato.";return}
+    if(R.length===1&&R[0].punteggio>=0.8){applyFound(R[0]);return}
+    msg.textContent="Ho trovato più risultati: tocca quello giusto.";
+    R.forEach(r=>{const b=document.createElement("button");b.type="button";b.className="btn";b.style.cssText="text-align:left;white-space:normal;line-height:1.35";
+      b.textContent=(r.nome||"(nome non disponibile)")+(r.piva?" · P.IVA "+r.piva:"")+(r.indirizzo?" · "+r.indirizzo:"")+" — "+r.fonte;
+      b.onclick=()=>applyFound(r);box.appendChild(b)});
+  }catch(e){msg.textContent="Ricerca non riuscita: "+(e&&e.message||e)}
+  finally{bNome.disabled=false;bNome.textContent="🔎 Cerca"}
+}
+bNome.onclick=cercaNome;
+$("#c_nome").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();cercaNome()}});
 $("#c_piva").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#bVies").click()}});
 refreshClientList();
 

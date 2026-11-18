@@ -57,6 +57,10 @@ async function start(store){
   const sb=supabase.createClient(CFG.url,CFG.key);
   const {data:{session}}=await sb.auth.getSession();
   if(!session)return gate('Accesso richiesto','Apri prima l\'app e accedi con il tuo account, poi torna ai Preventivi.',true);
+  window.PREV_FN=async(name,body)=>{
+    const r=await sb.functions.invoke(name,{body});
+    if(r.error){let m=r.error.message;try{const j=await r.error.context.json();if(j&&j.error)m=j.error}catch(e){}throw new Error(m)}
+    return r.data};
   const uid=session.user.id,{data:me,error:e1}=await sb.from('profiles').select('role,active').eq('id',uid).maybeSingle();
   if(e1||!me||me.active===false||!['admin','super'].includes(me.role))return gate('Area riservata','I preventivi sono visibili solo al Proprietario e agli Admin.',true);
   gate('Carico i preventivi…','Un attimo.',false);
