@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preventivi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Nunito:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: barra a schede in alto; nella scheda Preventivo editor a sinistra e foglio A4 a destra */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#18212b; --muted:#5d6b7a; --line:#d5dbe2;
+  --accent:#0f5c8c; --accent-ink:#ffffff; --accent-soft:#e3eef6;
+  --ok:#1d7a46; --warn:#a15c00; --danger:#b42318;
+  --paper:#ffffff; --paper-ink:#1b1f24; --paper-line:#cfd6de; --paper-head:#f2f5f8;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171d; --panel:#1b222b; --ink:#e6ebf0; --muted:#97a4b2; --line:#2e3946;
+  --accent:#4ea3d8; --accent-ink:#0b1620; --accent-soft:#1d3344; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171d; --panel:#1b222b; --ink:#e6ebf0; --muted:#97a4b2; --line:#2e3946;
+  --accent:#4ea3d8; --accent-ink:#0b1620; --accent-soft:#1d3344; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
+button,input,select,textarea{font:inherit;color:inherit}
+header.top{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+.top-in{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px))}
+.brand{font-weight:700;font-size:17px;letter-spacing:.2px;margin-right:8px}
+.brand small{font-weight:500;color:var(--muted);font-size:12px;margin-left:6px}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap}
+nav.tabs button{border:1px solid transparent;background:none;padding:7px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-weight:500}
+nav.tabs button.on{background:var(--accent-soft);color:var(--ink);border-color:var(--line)}
+.top-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);padding:7px 12px;border-radius:6px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.small{padding:4px 8px;font-size:12.5px}
+.btn.danger{color:var(--danger)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+main{padding:16px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px))}
+.view[hidden]{display:none!important}
+.split{display:grid;grid-template-columns:minmax(0,540px) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1100px){.split{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.panel+.panel{margin-top:12px}
+.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.panel h2 .sp{flex:1}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+.grid .full{grid-column:1/-1}
+@media (max-width:520px){.grid{grid-template-columns:minmax(0,1fr)}}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+label.f input,label.f select,label.f textarea,.inp{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 9px;color:var(--ink);font-size:14px;width:100%;min-width:0}
+textarea{resize:vertical}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.row-card{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;background:var(--bg)}
+.row-card+.row-card{margin-top:8px}
+.row-card.gift{border-style:dashed}
+.thumb{width:72px;height:72px;border-radius:6px;border:1px solid var(--line);background:var(--panel) center/contain no-repeat;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);text-align:center;cursor:pointer;overflow:hidden}
+.thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.row-fields{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;min-width:0}
+.row-fields .c2{grid-column:span 2}.row-fields .c4{grid-column:span 4}.row-fields .c3{grid-column:span 3}.row-fields .c6{grid-column:1/-1}
+.row-fields .inp{padding:5px 7px;font-size:13px}
+.row-tools{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row-tools .tot{margin-left:auto;font-family:var(--mono);font-weight:500}
+.chk{display:inline-flex;gap:5px;align-items:center;font-size:12.5px;color:var(--muted);cursor:pointer}
+.cat-head{display:flex;align-items:center;gap:8px;margin:14px 0 6px;font-weight:600}
+.cat-head:first-child{margin-top:0}
+.cat-head .pill{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--ink)}
+.cat-head .sp{flex:1}
+.empty{color:var(--muted);font-size:13px;padding:8px;border:1px dashed var(--line);border-radius:6px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:6px;z-index:50;font-weight:500;max-width:90vw}
+table.list{width:100%;border-collapse:collapse;font-size:13.5px}
+table.list th,table.list td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:middle}
+table.list th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.mini{width:40px;height:40px;object-fit:contain;border-radius:4px;border:1px solid var(--line);background:var(--panel)}
+.modal-bg{position:fixed;inset:0;background:rgba(10,15,20,.55);z-index:40;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.modal{background:var(--panel);border-radius:10px;border:1px solid var(--line);width:min(760px,100%);padding:16px}
+.modal h3{margin:0 0 10px;font-size:16px}
+.picker-item{display:flex;gap:10px;align-items:center;padding:7px;border-bottom:1px solid var(--line);cursor:pointer}
+.picker-item:hover{background:var(--accent-soft)}
+.picker-item .p{margin-left:auto;font-family:var(--mono)}
+.muted{color:var(--muted)}
+
+/* ---------- Foglio A4 ---------- */
+.sheet-wrap{overflow-x:auto;padding-bottom:6px}
+.sheet{background:var(--paper);color:var(--paper-ink);width:210mm;min-height:297mm;padding:14mm 13mm;margin:0 auto;box-shadow:0 2px 14px rgba(0,0,0,.12);font-size:10pt;line-height:1.38;font-family:var(--sans)}
+.sheet .hdr{display:flex;justify-content:space-between;gap:10mm;align-items:flex-start;border-bottom:2px solid var(--paper-ink);padding-bottom:5mm}
+.sheet .logo{max-width:60mm;max-height:24mm;object-fit:contain;display:block;margin-bottom:2mm}
+.sheet .az{font-size:8.6pt;color:#3c4652}
+.sheet .az b{font-size:11pt;color:var(--paper-ink)}
+.sheet .docid{text-align:right;min-width:55mm}
+.sheet .docid .t{font-size:20pt;font-weight:700;letter-spacing:.04em;line-height:1}
+.sheet .docid .n{font-family:var(--mono);font-size:11pt;margin-top:2mm}
+.sheet .docid .d{font-size:8.8pt;color:#3c4652;margin-top:1mm}
+.sheet .parties{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:5mm}
+.sheet .box{border:1px solid var(--paper-line);padding:3mm 4mm;border-radius:1.5mm;font-size:9pt}
+.sheet .box .lbl{font-size:7.2pt;text-transform:uppercase;letter-spacing:.1em;color:#5b6772;margin-bottom:1mm;font-weight:600}
+.sheet .box b{font-size:10.5pt}
+.sheet .ogg{margin-top:5mm;padding:2.5mm 4mm;background:var(--paper-head);border-left:3px solid var(--paper-ink);font-size:10pt}
+.sheet .ogg span{font-size:7.2pt;text-transform:uppercase;letter-spacing:.1em;color:#5b6772;font-weight:600;margin-right:3mm}
+.sheet table.items{width:100%;border-collapse:collapse;margin-top:5mm;font-size:8.8pt}
+.sheet table.items th{background:var(--paper-head);text-align:left;font-size:7.2pt;text-transform:uppercase;letter-spacing:.07em;padding:2mm 1.6mm;border-bottom:1px solid var(--paper-ink);font-weight:600;color:#38424d}
+.sheet table.items td{padding:2mm 1.6mm;border-bottom:1px solid var(--paper-line);vertical-align:top}
+.sheet table.items .num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sheet table.items tr.cat td{background:#fafbfc;font-weight:700;font-size:8pt;text-transform:uppercase;letter-spacing:.08em;padding-top:3mm;border-bottom:1px solid var(--paper-ink)}
+.sheet table.items tr.sub td{font-weight:600;border-bottom:none;padding-bottom:3mm}
+.sheet table.items tr{break-inside:avoid}
+.sheet .pimg{width:17mm;height:17mm;object-fit:contain;display:block}
+.sheet .ititle{font-weight:600}
+.sheet .idesc{color:#45505b;font-size:8.2pt;white-space:pre-line}
+.sheet .old{text-decoration:line-through;color:#8a949e;display:block;font-size:7.8pt}
+.sheet .tag{display:inline-block;font-size:7pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid currentColor;padding:0 1.2mm;border-radius:1mm;color:#1d7a46;margin-top:.8mm}
+.sheet .tag.sc{color:#a15c00}
+.sheet .bottom{display:grid;grid-template-columns:1fr 78mm;gap:8mm;margin-top:6mm;break-inside:avoid}
+.sheet .notes{font-size:8.6pt;white-space:pre-line;color:#2f3943}
+.sheet .notes .lbl{font-size:7.2pt;text-transform:uppercase;letter-spacing:.1em;color:#5b6772;font-weight:600;margin:0 0 1mm}
+.sheet table.tot{width:100%;border-collapse:collapse;font-size:9.4pt}
+.sheet table.tot td{padding:1.4mm 0;border-bottom:1px solid var(--paper-line)}
+.sheet table.tot td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sheet table.tot tr.disc td{color:#a15c00}
+.sheet table.tot tr.grand td{border-top:2px solid var(--paper-ink);border-bottom:none;font-size:12.5pt;font-weight:700;padding-top:2.5mm}
+.sheet .save{font-size:8.4pt;color:#1d7a46;text-align:right;margin-top:1.5mm;font-weight:600}
+.sheet .sign{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:12mm;font-size:8.6pt;break-inside:avoid}
+.sheet .sign div{border-top:1px solid var(--paper-ink);padding-top:1.5mm;color:#45505b}
+.sheet .foot{margin-top:8mm;font-size:7.6pt;color:#6a7580;border-top:1px solid var(--paper-line);padding-top:2mm;white-space:pre-line}
+
+/* ---------- Modello "Tabella" (stile Lumia) ---------- */
+.lm{font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:#000}
+.lm .lh{display:flex;justify-content:space-between;align-items:flex-start;gap:8mm}
+.lm .lh img{max-width:62mm;max-height:32mm;object-fit:contain}
+.lm .web{font-family:"Nunito",Arial,sans-serif;font-size:13pt;color:#222;padding-top:8mm}
+.lm .lp{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-top:14mm}
+.lm .ogg{font-weight:700;font-size:10.5pt;background:none;border:none;padding:0;margin:0}
+.lm .cli{font-family:"Nunito",Arial,sans-serif}
+.lm .cli .cn{font-size:14pt;font-weight:700;line-height:1.35}
+.lm .cli .ca{font-size:10.5pt;margin-top:4mm;line-height:1.45}
+.lm .pn{font-family:"Nunito",Arial,sans-serif;color:#444;font-size:9.5pt;margin-top:6mm}
+.lm table{width:100%;border-collapse:collapse;margin-top:6mm;border:1.2px solid #000}
+.lm td,.lm th{border:1px solid #000;padding:2.2mm 2mm;vertical-align:middle}
+.lm .hd{background:var(--lm-col,#a4c2f4);font-weight:700;text-align:center;font-size:10.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lm th{font-weight:700;text-align:center;font-size:10.5pt}
+.lm .im{width:25mm;text-align:center}
+.lm .im img{max-width:21mm;max-height:15mm;object-fit:contain;display:inline-block}
+.lm .ds{font-size:10pt}
+.lm .ds ul{margin:0;padding-left:5mm;list-style:none}
+.lm .ds li{padding-left:6mm;text-indent:-6mm}
+.lm .ds .ln{text-align:center}
+.lm .ds .sub{text-align:center}
+.lm .pr,.lm .tt{color:#e00000;font-weight:700;text-align:center;font-size:9pt;white-space:nowrap;width:30mm}
+.lm .tt{width:28mm}
+.lm th{white-space:nowrap}
+.lm tr.it td{height:15mm}
+.lm .pr s,.lm .tt s{color:#777;font-weight:400;display:block}
+.lm .gift{color:#1d7a46}
+.lm .nt{font-weight:700;font-size:8.6pt;vertical-align:top;white-space:pre-line}
+.lm .tl{background:var(--lm-col,#a4c2f4);font-weight:700;text-decoration:underline;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lm .ta{color:#e00000;font-weight:700;text-align:center;font-size:9pt}
+.lm .ta u{display:block}
+.lm .ta .sm{color:#000;font-weight:400;text-decoration:none;display:block;font-size:8pt}
+.lm .after{margin-top:6mm;font-size:9pt;white-space:pre-line}
+.lm .after b{display:block;margin-top:2mm}
+@media print{
+  @page{size:A4;margin:12mm 12mm 14mm}
+  body{background:#fff}
+  header.top,.no-print,.view:not(#v-quote),#v-quote .editor,.toast{display:none!important}
+  main{padding:0}
+  .split{display:block}
+  .sheet-wrap{overflow:visible;padding:0}
+  .sheet{box-shadow:none;margin:0;width:auto;min-height:0;padding:0}
+  .sheet .box,.sheet .ogg,.sheet table.items th,.sheet table.items tr.cat td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="btn" id="bBack" href="../" title="Torna a Presenze &amp; Ticket">← App</a>
+    <div class="brand">Preventivi<small id="brandAz"></small><span id="syncSt" class="muted" style="font-size:12px;margin-left:8px"></span></div>
+    <nav class="tabs" id="tabs">
+      <button data-v="quote" class="on">Preventivo</button>
+      <button data-v="catalog">Listino</button>
+      <button data-v="archive">Archivio</button>
+      <button data-v="company">Azienda</button>
+    </nav>
+    <div class="top-actions" id="quoteActions">
+      <button class="btn" id="bNew">Nuovo</button>
+      <button class="btn" id="bOpen" title="Riapri un preventivo salvato in PDF per modificarlo">Apri PDF</button>
+      <button class="btn" id="bPrint">Stampa</button>
+      <button class="btn primary" id="bSave">Salva PDF</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ================= PREVENTIVO ================= -->
+<section class="view" id="v-quote">
+ <div class="split">
+  <div class="editor">
+   <div class="panel">
+    <h2>Dati preventivo</h2>
+    <div class="grid">
+     <label class="f">Numero preventivo<input id="q_numero"></label>
+     <label class="f">Data<input id="q_data" type="date"></label>
+     <label class="f">Validità (giorni)<input id="q_validita" type="number" min="0"></label>
+     <label class="f">Revisione<input id="q_rev" placeholder="es. Rev. 1"></label>
+     <label class="f full">Oggetto del preventivo<textarea id="q_oggetto" rows="2"></textarea></label>
+     <label class="f full">Titolo della tabella<input id="q_titoloTab" placeholder="es. PREVENTIVO ESTENSIONE TVCC"></label>
+     <label class="f">Modello documento<select id="q_layout"><option value="lumia">Tabella Lumia</option><option value="classico">Classico</option></select></label>
+     <label class="chk" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="q_dataTab"> Data nella prima riga della tabella</label>
+    </div>
+   </div>
+
+   <div class="panel">
+    <h2>Cliente <span class="sp"></span><button class="btn small" id="bPickClient">Da archivio clienti</button></h2>
+    <div class="grid">
+     <label class="f full">Ragione sociale<input id="c_nome" list="dlClienti" autocomplete="off" placeholder="Scrivi il nome: i clienti già salvati compaiono qui"><datalist id="dlClienti"></datalist></label>
+     <label class="f">Partita IVA<div style="display:flex;gap:6px"><input id="c_piva" class="inp" inputmode="numeric" placeholder="11 cifre"><button class="btn" id="bVies" type="button">Cerca dati</button></div></label>
+     <label class="f">Codice fiscale<input id="c_cf"></label>
+     <label class="f full">Sede legale<input id="c_legale" placeholder="Via, CAP, Città (Prov.)"></label>
+     <label class="f full">Sede esecutiva / cantiere<input id="c_esecutiva" placeholder="Lascia vuoto se coincide con la sede legale"></label>
+     <label class="f">Referente<input id="c_ref"></label>
+     <label class="f">Telefono<input id="c_tel"></label>
+     <label class="f">Email / PEC<input id="c_email"></label>
+     <label class="f">Codice SDI<input id="c_sdi"></label>
+    </div>
+    <p class="hint" id="viesMsg">Inserisci la partita IVA e premi «Cerca dati»: ragione sociale e sede legale arrivano dal registro europeo VIES. Non conosci la P.IVA? <a id="lnkPiva" href="https://www.google.com/search?q=partita+iva" target="_blank" rel="noopener">Cercala su Google</a>.</p>
+   </div>
+
+   <div class="panel">
+    <h2>Voci <span class="sp"></span><button class="btn small" id="bFromCat">+ Da listino</button></h2>
+    <div class="grid" style="margin-bottom:8px">
+     <label class="f full">Importa dal web: incolla il link della pagina prodotto
+      <div style="display:flex;gap:6px"><input id="webUrl" class="inp" placeholder="https://…"><select id="webCat" class="inp" style="width:auto"></select><button class="btn" id="bWeb">Importa</button></div>
+     </label>
+    </div>
+    <p class="hint" style="margin:-2px 0 10px">Legge titolo, descrizione e immagine dalla pagina. Puoi sempre correggerli a mano.</p>
+    <div id="rows"></div>
+   </div>
+
+   <div class="panel">
+    <h2>Sconti e IVA</h2>
+    <div class="grid">
+     <label class="f">Sconto sul totale<div style="display:flex;gap:6px"><input id="q_sconto" type="number" min="0" step="0.01" class="inp"><select id="q_scontoTipo" class="inp" style="width:auto"><option value="%">%</option><option value="€">€</option></select></div></label>
+     <label class="f">Aliquota IVA %<input id="q_iva" type="number" min="0" step="0.5"></label>
+     <label class="f">Arrotonda totale a<select id="q_arr"><option value="0">Nessun arrotondamento</option><option value="1">1 €</option><option value="10">10 €</option><option value="50">50 €</option><option value="100">100 €</option></select></label>
+     <label class="f">Totale finale<select id="q_totIva"><option value="piu">Imponibile «+iva»</option><option value="dettaglio">Imponibile, IVA e totale</option></select></label>
+     <label class="f">Mostra (modello classico)<select id="q_show"><option value="all">Prezzo unitario e totale riga</option><option value="tot">Solo totale riga</option><option value="none">Solo totale finale</option></select></label>
+     <label class="chk full"><input type="checkbox" id="q_showImg"> Mostra immagini nel documento</label>
+     <label class="chk full"><input type="checkbox" id="q_showListino"> Mostra prezzo di listino barrato sulle voci scontate</label>
+    </div>
+   </div>
+
+   <div class="panel">
+    <h2>Note e condizioni</h2>
+    <div class="grid">
+     <label class="f full">Note<textarea id="q_note" rows="3"></textarea></label>
+     <label class="f">Pagamento<input id="q_pag"></label>
+     <label class="f">Tempi di consegna / esecuzione<input id="q_tempi"></label>
+     <label class="f full">Condizioni generali<textarea id="q_cond" rows="3"></textarea></label>
+    </div>
+   </div>
+  </div>
+
+  <div class="sheet-wrap"><div class="sheet" id="sheet"></div></div>
+ </div>
+</section>
+
+<!-- ================= LISTINO ================= -->
+<section class="view" id="v-catalog" hidden>
+ <div class="panel">
+  <h2>Listino prezzi <span class="sp"></span>
+   <button class="btn small" id="bCatAdd">+ Nuova voce</button>
+   <button class="btn small" id="bCatImport">Importa CSV</button>
+   <button class="btn small" id="bCatExport">Esporta CSV</button>
+  </h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+   <input id="catSearch" class="inp" placeholder="Cerca codice, modello o descrizione" style="max-width:320px">
+   <select id="catFilter" class="inp" style="width:auto"></select>
+   <span id="catCount" class="muted" style="align-self:center"></span>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 10px;border:1px dashed var(--line);border-radius:6px">
+   <span>Prezzo di vendita = costo +</span>
+   <input id="ricarico" class="inp" type="number" step="1" value="30" style="width:80px"> %
+   <button class="btn small" id="bRicarico">Applica alle voci mostrate</button>
+   <span class="muted" style="font-size:12px">Il costo resta salvato: puoi riapplicare un ricarico diverso quando vuoi.</span>
+  </div>
+  <div class="scroll"><table class="list" id="catTable"></table></div>
+  <p class="hint">CSV con separatore punto e virgola, colonne: categoria;codice;titolo;descrizione;um;prezzo;immagine. Categorie: materiali, manodopera, accessori. Compatibile con Excel e Google Fogli.</p>
+ </div>
+</section>
+
+<!-- ================= ARCHIVIO ================= -->
+<section class="view" id="v-archive" hidden>
+ <div class="panel">
+  <h2>Preventivi salvati <span class="sp"></span>
+   <button class="btn small" id="bBackup">Copia backup</button>
+   <button class="btn small" id="bRestore">Ripristina backup</button>
+  </h2>
+  <input id="arcSearch" class="inp" placeholder="Cerca cliente, numero o oggetto" style="max-width:320px;margin-bottom:10px">
+  <div class="scroll"><table class="list" id="arcTable"></table></div>
+  <p class="hint">I dati restano in questo browser. Usa «Copia backup» e incolla il testo in un file su Google Drive per conservarlo o spostarlo su un altro computer.</p>
+ </div>
+</section>
+
+<!-- ================= AZIENDA ================= -->
+<section class="view" id="v-company" hidden>
+ <div class="panel" style="max-width:760px">
+  <h2>La tua azienda (intestazione)</h2>
+  <div class="grid">
+   <div class="full" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div class="thumb" id="logoPrev" style="width:160px;height:70px">Nessun logo</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+     <button class="btn small" id="bLogo">Carica logo</button>
+     <button class="btn small danger" id="bLogoDel">Rimuovi</button>
+    </div>
+   </div>
+   <label class="f full">Ragione sociale<input id="a_nome"></label>
+   <label class="f">Partita IVA<input id="a_piva"></label>
+   <label class="f">Codice fiscale<input id="a_cf"></label>
+   <label class="f full">Sede legale<input id="a_sede"></label>
+   <label class="f full">Sede operativa<input id="a_oper"></label>
+   <label class="f">Telefono<input id="a_tel"></label>
+   <label class="f">Email / PEC<input id="a_email"></label>
+   <label class="f">Sito web<input id="a_web"></label>
+   <label class="f">IBAN<input id="a_iban"></label>
+   <label class="f">Colore intestazione tabella<input id="a_colore" type="color" style="height:38px;padding:3px"></label>
+   <label class="f">Formato numero<select id="a_formato"><option value="n">Solo numero (es. 130)</option><option value="anno">Numero/anno (es. 130/2026)</option></select></label>
+   <label class="f">Prefisso numerazione<input id="a_pref" placeholder="facoltativo, es. PR"></label>
+   <label class="f">Prossimo numero<input id="a_next" type="number" min="1"></label>
+   <label class="f full">Piè di pagina<textarea id="a_foot" rows="2"></textarea></label>
+   <label class="f full">Condizioni generali predefinite<textarea id="a_cond" rows="3"></textarea></label>
+   <label class="f">Pagamento predefinito<input id="a_pag"></label>
+   <label class="f">IVA predefinita %<input id="a_iva" type="number" min="0" step="0.5"></label>
+  </div>
+  <p class="hint">Salvato automaticamente in questo browser.</p>
+ </div>
+</section>
+</main>
+
+<input type="file" id="fileImg" accept="image/*" hidden>
+<input type="file" id="fileLogo" accept="image/*" hidden>
+<input type="file" id="filePdf" accept=".pdf,application/pdf" hidden>
+<input type="file" id="fileCsv" accept=".csv,text/csv,text/plain" hidden>
+<div id="modalRoot"></div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="listino.js"></script>
+<script src="lib/html2canvas.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="boot.js"></script>
+
+</body>
+</html>
