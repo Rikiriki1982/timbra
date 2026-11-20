@@ -93,30 +93,40 @@ function searchConfigured(): string {
   if (Deno.env.get('GOOGLE_API_KEY') && Deno.env.get('GOOGLE_CX')) return 'Google'
   return ''
 }
-async function webSearch(q: string): Promise<Hit[]> {
-  const tav = Deno.env.get('TAVILY_API_KEY')
-  if (tav) {
-    const r = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tav }, body: JSON.stringify({ query: q, max_results: 8, search_depth: 'basic', country: 'italy' }), signal: AbortSignal.timeout(12000) })
-    if (!r.ok) throw new Error('Tavily HTTP ' + r.status)
-    const j = await r.json()
-    return (j?.results ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.url || ''), snippet: String(x.content || '') }))
-  }
-  const ser = Deno.env.get('SERPER_API_KEY')
-  if (ser) {
-    const r = await fetch('https://google.serper.dev/search', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-KEY': ser }, body: JSON.stringify({ q, gl: 'it', hl: 'it', num: 8 }), signal: AbortSignal.timeout(12000) })
-    if (!r.ok) throw new Error('Serper HTTP ' + r.status)
-    const j = await r.json()
-    const kg = j?.knowledgeGraph ? [{ title: String(j.knowledgeGraph.title || ''), url: String(j.knowledgeGraph.website || j.knowledgeGraph.descriptionLink || 'https://www.google.it'), snippet: JSON.stringify(j.knowledgeGraph.attributes || {}) + ' ' + String(j.knowledgeGraph.description || '') }] : []
-    return [...kg, ...(j?.organic ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.link || ''), snippet: String(x.snippet || '') }))]
-  }
-  const brave = Deno.env.get('BRAVE_API_KEY')
-  if (brave) {
-    const j = JSON.parse(await get('https://api.search.brave.com/res/v1/web/search?count=8&country=IT&search_lang=it&q=' + encodeURIComponent(q), { 'X-Subscription-Token': brave, Accept: 'application/json' }))
-    return (j?.web?.results ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.url || ''), snippet: String(x.description || '') }))
-  }
-  const key = Deno.env.get('GOOGLE_API_KEY'), cx = Deno.env.get('GOOGLE_CX')
+async function viaTavily(q: string, key: string): Promise<Hit[]> {
+  const r = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ query: q, max_results: 8, search_depth: 'basic', country: 'italy' }), signal: AbortSignal.timeout(12000) })
+  if (!r.ok) throw new Error('Tavily HTTP ' + r.status)
+  const j = await r.json()
+  return (j?.results ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.url || ''), snippet: String(x.content || '') }))
+}
+async function viaSerper(q: string, key: string): Promise<Hit[]> {
+  const r = await fetch('https://google.serper.dev/search', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-KEY': key }, body: JSON.stringify({ q, gl: 'it', hl: 'it', num: 8 }), signal: AbortSignal.timeout(12000) })
+  if (!r.ok) throw new Error('Serper HTTP ' + r.status)
+  const j = await r.json()
+  const kg = j?.knowledgeGraph ? [{ title: String(j.knowledgeGraph.title || ''), url: String(j.knowledgeGraph.website || j.knowledgeGraph.descriptionLink || 'https://www.google.it'), snippet: JSON.stringify(j.knowledgeGraph.attributes || {}) + ' ' + String(j.knowledgeGraph.description || '') }] : []
+  return [...kg, ...(j?.organic ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.link || ''), snippet: String(x.snippet || '') }))]
+}
+async function viaBrave(q: string, key: string): Promise<Hit[]> {
+  const j = JSON.parse(await get('https://api.search.brave.com/res/v1/web/search?count=8&country=IT&search_lang=it&q=' + encodeURIComponent(q), { 'X-Subscription-Token': key, Accept: 'application/json' }))
+  return (j?.web?.results ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.url || ''), snippet: String(x.description || '') }))
+}
+async function viaGoogle(q: string, key: string, cx: string): Promise<Hit[]> {
   const j = JSON.parse(await get(`https://www.googleapis.com/customsearch/v1?num=8&gl=it&lr=lang_it&key=${key}&cx=${cx}&q=` + encodeURIComponent(q), { Accept: 'application/json' }))
   return (j?.items ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.link || ''), snippet: String(x.snippet || '') }))
+}
+// prova i motori nell'ordine Tavily, Serper, Brave, Google: se uno dà errore (ricerche finite, chiave scaduta...) passa al successivo
+async function webSearch(q: string): Promise<Hit[]> {
+  const env = (k: string) => Deno.env.get(k) || ''
+  const list: [string, () => Promise<Hit[]>][] = []
+  if (env('TAVILY_API_KEY')) list.push(['Tavily', () => viaTavily(q, env('TAVILY_API_KEY'))])
+  if (env('SERPER_API_KEY')) list.push(['Serper', () => viaSerper(q, env('SERPER_API_KEY'))])
+  if (env('BRAVE_API_KEY')) list.push(['Brave', () => viaBrave(q, env('BRAVE_API_KEY'))])
+  if (env('GOOGLE_API_KEY') && env('GOOGLE_CX')) list.push(['Google', () => viaGoogle(q, env('GOOGLE_API_KEY'), env('GOOGLE_CX'))])
+  const errs: string[] = []
+  for (const [name, fn] of list) {
+    try { const h = await fn(); if (h.length) return h; errs.push(name + ': nessun risultato') } catch (e) { errs.push((e as Error).message || name) }
+  }
+  throw new Error(errs.join(' → ') || 'nessuna chiave configurata')
 }
 const strip = (h: string) => h.replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
 
