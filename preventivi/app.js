@@ -113,11 +113,13 @@ let saveT;
 function changed(rerenderRows){if(rerenderRows)renderRows();else updateRowTotals();renderSheet();clearTimeout(saveT);saveT=setTimeout(()=>store.set("bozza",q),300)}
 
 /* ---------- preventivo "Connessione" (abbonamento servizi) ---------- */
+const DEF_VOIP=()=>[["FISSI NAZIONALI",0.04],["MOBILI NAZIONALI",0.08],["RESTO DEL MONDO",0.35]].map(([label,prezzo])=>({id:uid(),label,prezzo}));
+const voipDefault=()=>Array.isArray(az.voip)&&az.voip.length?az.voip.map(r=>({id:uid(),label:r.label,prezzo:r.prezzo})):DEF_VOIP();
 const blankConn=()=>({id:uid(),titolo:"",dett:"",qta:1,una:0,can:0});
 const blankVoip=()=>({id:uid(),label:"",prezzo:0});
 function applyTipo(){
   document.body.classList.toggle("tconn",q.tipo==="conn");
-  if(q.tipo==="conn"){if(!q.conn.length)q.conn.push(blankConn());if(!q.voip.length)q.voip.push({id:uid(),label:"RESTO DEL MONDO",prezzo:0.35});
+  if(q.tipo==="conn"){if(!q.conn.length)q.conn.push(blankConn());if(!q.voip.length&&!q.voipOff)q.voip=voipDefault();
     if(!q.oggetto)q.oggetto="Proposta di abbonamento servizi di telecomunicazioni";$("#q_oggetto").value=q.oggetto}
 }
 function calcConn(qq){let una=0,can=0;(qq.conn||[]).forEach(r=>{una+=n(r.una)*n(r.qta);can+=n(r.can)*n(r.qta)});return{una:r2(una),can:r2(can)}}
@@ -143,11 +145,13 @@ function listEditor(box,key,blank,after){
   box.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const L=q[key],i=+b.closest(".row-card").dataset.i,act=b.dataset.act;
     if(act==="del")L.splice(i,1);else if(act==="dup")L.splice(i+1,0,Object.assign({},L[i],{id:uid()}));
     else{const t=i+(act==="up"?-1:1);if(t<0||t>=L.length)return;[L[i],L[t]]=[L[t],L[i]]}
+    if(key==="voip")q.voipOff=!q.voip.length;
     renderConnRows();changed()})
 }
 listEditor($("#connRows"),"conn");listEditor($("#voipRows"),"voip");
 $("#bConnAdd").onclick=()=>{q.conn.push(blankConn());renderConnRows();changed()};
-$("#bVoipAdd").onclick=()=>{q.voip.push(blankVoip());renderConnRows();changed()};
+$("#bVoipSave").onclick=()=>{az.voip=q.voip.map(r=>({label:r.label,prezzo:r.prezzo}));store.set("azienda",az);toast("Listino VoIP salvato: sarà proposto nei nuovi preventivi di connessione")};
+$("#bVoipAdd").onclick=()=>{q.voipOff=false;q.voip.push(blankVoip());renderConnRows();changed()};
 $("#q_tipo").addEventListener("input",()=>{applyTipo();renderConnRows();changed()});
 
 /* ---------- righe (editor) ---------- */
@@ -292,7 +296,8 @@ function renderConn(){
   const nl=s=>esc(s).replace(/\n/g,"<br>");
   const rows=q.conn.map(r=>`<tr class="it">${anyDett?(String(r.dett||"").trim()?`<td class="ds">${nl(r.titolo)}</td><td class="dt">${nl(r.dett)}</td>`:`<td class="ds" colspan="2">${nl(r.titolo)}</td>`):`<td class="ds">${nl(r.titolo)}</td>`}
     <td class="cq">${num.format(n(r.qta))}</td><td class="cq">${eurP(n(r.una))}</td><td class="cq">${eurP(n(r.can))}</td></tr>`).join("")||`<tr><td colspan="4" style="text-align:center;color:#999">Aggiungi i servizi del preventivo</td></tr>`;
-  const voip=q.voip.length?`<table class="cn" style="margin-top:7mm"><tr><td class="hd2" colspan="2">${esc(q.voipTitolo)}</td></tr>${q.voip.map(r=>`<tr><td class="ds">${esc(r.label)}</td><td class="cq" style="width:28mm">${eurP(n(r.prezzo))}</td></tr>`).join("")}</table>`:"";
+  const eurV=v=>"€ "+new Intl.NumberFormat("it-IT",{minimumFractionDigits:2,maximumFractionDigits:3}).format(v);
+  const voip=q.voip.length?`<table class="cn" style="margin-top:7mm"><tr><td class="hd2" colspan="2">${esc(q.voipTitolo)}</td></tr>${q.voip.map(r=>`<tr><td class="ds">${esc(r.label)}</td><td class="cq" style="width:28mm">${eurV(n(r.prezzo))}</td></tr>`).join("")}</table>`:"";
   const note=[q.connNote,q.connDurata].filter(x=>String(x||"").trim());
   $("#sheet").innerHTML=`<div class="lm" style="--lm-col:${esc(az.colore||"#a4c2f4")}">
    <div class="lh"><div>${az.logo?`<img src="${esc(az.logo)}" alt="Logo">`:`<b style="font-size:16pt">${esc(az.nome)}</b>`}</div><div class="web">${esc(az.web)}</div></div>
