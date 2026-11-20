@@ -57,6 +57,14 @@ em.modifica{background:var(--wa)!important}.faq{max-height:60vh;overflow:auto}.f
 .mc.tr{display:flex;flex-direction:column;align-items:stretch}.mc{min-height:58px;align-items:stretch!important;justify-content:flex-start!important;padding:3px!important;position:relative;cursor:pointer}.mc .dn{display:flex;justify-content:space-between;font-size:12px;font-weight:700}.mc .wr{font-style:normal;font-size:10px}.mc.now .dn span{background:var(--ac);color:#fff;border-radius:99px;min-width:18px;text-align:center;padding:0 3px}.mc.selday{outline:3px solid var(--ac);outline-offset:1px}.mc .chips{display:flex;flex-direction:column;gap:2px;margin-top:2px}.mc .chip{font-size:9px;line-height:12px;border-radius:4px;padding:0 3px;background:var(--pc);color:#fff;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:700}.mc .more{font-size:9px;font-weight:700;opacity:.8}
 .mg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.mh{font-size:11px;color:var(--mu);font-weight:600}.mc{display:flex;flex-direction:column;border-radius:9px;font-size:13px;margin:0;min-height:58px;border:1px solid transparent}.mc.tr{border:1px solid rgba(0,0,0,.12);gap:0}
 .tgl{display:flex;align-items:center;gap:8px;padding:5px 0;margin:0}.tgl input{width:auto}.perm{margin-top:8px;border-top:1px solid var(--bd);padding-top:6px}input[readonly]{opacity:.7}
+
+.cal.agc{display:block}.chip .ct,.chip.c3,.more.dd{display:none}.tdef{font-size:12px;margin:-4px 0 8px}.tdef a{color:var(--ac);font-weight:600}
+@media(min-width:1000px){main#v.wide{max-width:1480px}
+ .tsplit{display:grid;grid-template-columns:minmax(600px,1.7fr) minmax(380px,1fr);gap:18px;align-items:start}
+ .tsplit .tright{position:sticky;top:64px;max-height:calc(100vh - 84px);overflow:auto;padding-right:2px}
+ .tsplit .mg{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-content:start}.tsplit .mg>div{min-width:0}.tsplit .mc{min-height:88px;padding:5px!important;font-size:15px}.tsplit .mh{font-size:13px;padding:4px 0;min-height:0!important;height:auto}
+ .tsplit .chip{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px;text-align:left;padding:2px 5px;margin-top:3px}
+ .tsplit .chip .ct{display:inline}.tsplit .chip.c3{display:block}.tsplit .more.mm{display:none}.tsplit .more.dd{display:block}.tsplit .hint{display:none}}
 </style></head><body>
 <header><div class="hl"><img id="logo" alt="" hidden><div><h1>⏱️ Presenze & Ticket Pro</h1><small id="who"></small></div></div><span style="display:flex;gap:8px;align-items:center"><button class="badge" id="bell" onclick="notifPanel()" style="border:0;color:#fff;cursor:pointer;font-size:15px">🔔</button><span class="badge" id="role"></span></span></header>
 <div id="inst"></div>
@@ -391,7 +399,10 @@ function wireCal(el,mm){let sx=0,sy=0,tm=null,sc=false,last=null;
   const t=e.changedTouches&&e.changedTouches[0];if(!t||e.type==='touchcancel')return;const dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)>70&&Math.abs(dy)<45){S.tm=mm+(dx<0?1:-1);S.anim=dx<0?'l':'r';render()}};
  el.addEventListener('touchend',end);el.addEventListener('touchcancel',end);el.addEventListener('contextmenu',e=>e.preventDefault());
  if(matchMedia('(hover:hover)').matches){el.addEventListener('mouseover',e=>{const c=e.target.closest?e.target.closest('.mc[data-d]'):null;show(c)});el.addEventListener('mouseleave',()=>show(null))}}
-function vTix(){tVis=[];hidePv();const T=today(),sc=S.tv||'mese',vis=Object.values(S.tix).filter(t=>isA()||mineT(t,uid)),mine=vis.filter(t=>mineT(t,uid)),mo=isA()&&S.tmine,src=mo?mine:vis,
+const TVS=[['mese','📆 Agenda'],['oggi','☀️ Giornata'],['sett','🗓 Settimana'],['tutti','📋 Elenco']];
+function tvDef(){try{const v=localStorage.getItem('tix_def');return TVS.some(x=>x[0]===v)?v:'mese'}catch(e){return'mese'}}
+function tvSet(v){try{localStorage.setItem('tix_def',v)}catch(e){}toast('Vista predefinita: '+TVS.find(x=>x[0]===v)[1].slice(3));render()}
+function vTix(){tVis=[];hidePv();const T=today(),sc=S.tv||(S.tv=tvDef()),vis=Object.values(S.tix).filter(t=>isA()||mineT(t,uid)),mine=vis.filter(t=>mineT(t,uid)),mo=isA()&&S.tmine,src=mo?mine:vis,
  op=src.filter(t=>t.status!=='Fatto').sort(tSort),arch=src.filter(t=>t.status==='Fatto').sort((a,b)=>(b.doneAt||0)-(a.doneAt||0)||(b.due||'').localeCompare(a.due||'')),
  sec=(title,items,o,empty)=>E('div',{style:'margin-top:12px'},E('b',{},title+' ('+items.length+')'),items.length?items.map(t=>tRow(t,o)):E('div',{class:'mu',style:'margin-top:4px'},empty||'Nessun ticket.'));
  const tabs=E('div',{class:'seg'},[['mese','📆 Agenda'],['oggi','☀️ Giornata'],['sett','🗓 Settimana'],['tutti','📋 Elenco'],['arch','🗄 Archivio ('+arch.length+')']].map(([k,l])=>E('button',{class:'btn sm '+(sc===k?'':'gh'),onclick:()=>{S.tv=k;render()}},l)));
@@ -411,20 +422,20 @@ function vTix(){tVis=[];hidePv();const T=today(),sc=S.tv||'mese',vis=Object.valu
   const dc=dt=>dt<T?'late':dt===T?'today':dt<=addD(T,3)?'soon':dt<=addD(T,7)?'week':'far',cells=[...Array(first).fill(null),...Array.from({length:n},(_,i)=>i+1)];
   const grid=E('div',{class:'mg'+(S.anim?' sl'+S.anim:'')},...['L','M','M','G','V','S','D'].map(x=>E('div',{class:'mh'},x)),...cells.map(c=>{if(!c)return E('div',{});const dt=ym+'-'+pad(c),x=(by[dt]||[]).slice().sort(tSort),cf=x.length&&dayOver(x).length;
    return E('div',{class:'mc'+(x.length?' tr '+dc(dt):'')+(dt===T?' now':'')+(dt===S.sd?' selday':''),'data-d':dt,onclick:()=>{S.sd=dt;render()}},E('div',{class:'dn'},E('span',{},c),cf?E('i',{class:'wr'},'⚠️'):null),
-    x.length?E('div',{class:'chips'},...x.slice(0,2).map(t=>E('div',{class:'chip',style:'--pc:'+PR[t.prio||'normale'][1]},t.time||'●')),x.length>2?E('div',{class:'more'},'+'+(x.length-2)):null):null)}));S.anim=null;
-  const cal=E('div',{class:'card cal'},grid);wireCal(cal,mm);
+    x.length?E('div',{class:'chips'},...x.slice(0,3).map((t,i)=>E('div',{class:'chip'+(i>1?' c3':''),style:'--pc:'+PR[t.prio||'normale'][1]},E('span',{},t.time||'●'),E('span',{class:'ct'},' '+t.title))),x.length>2?E('div',{class:'more mm'},'+'+(x.length-2)):null,x.length>3?E('div',{class:'more dd'},'+'+(x.length-3)):null):null)}));S.anim=null;
+  const cal=E('div',{class:'card cal agc'},grid);wireCal(cal,mm);
   const items=(by[S.sd]||[]).slice().sort(tSort),ov=dayOver(items),total=Object.values(by).reduce((a,x)=>a+x.length,0);
-  body=E('div',{},nav(MESI[mo2]+' '+y,()=>{S.tm=mm-1;S.anim='r';render()},()=>{S.tm=mm+1;S.anim='l';render()},mm?()=>{S.tm=0;S.sd=T;S.anim=mm>0?'r':'l';render()}:null),cal,
-   E('div',{class:'mu',style:'text-align:center;margin:-2px 0 6px'},'Scorri per cambiare mese · tieni premuto un giorno per l\'anteprima'),
-   E('div',{class:'card',style:'margin-top:8px'},E('div',{class:'row sp'},E('div',{},E('b',{},longD(S.sd)),E('div',{class:'mu'},items.length?items.length+(items.length===1?' impegno':' impegni'):'Giornata libera')),E('button',{class:'btn sm',onclick:()=>tixModal(null,{due:S.sd})},'+ Aggiungi')),
+  body=E('div',{class:'tsplit'},E('div',{class:'tleft'},nav(MESI[mo2]+' '+y,()=>{S.tm=mm-1;S.anim='r';render()},()=>{S.tm=mm+1;S.anim='l';render()},mm?()=>{S.tm=0;S.sd=T;S.anim=mm>0?'r':'l';render()}:null),cal,
+   E('div',{class:'mu hint',style:'text-align:center;margin:-2px 0 6px'},'Scorri per cambiare mese · tieni premuto un giorno per l\'anteprima')),
+   E('div',{class:'tright'},E('div',{class:'card',style:'margin-top:8px'},E('div',{class:'row sp'},E('div',{},E('b',{},longD(S.sd)),E('div',{class:'mu'},items.length?items.length+(items.length===1?' impegno':' impegni'):'Giornata libera')),E('button',{class:'btn sm',onclick:()=>tixModal(null,{due:S.sd})},'+ Aggiungi')),
     ov.length?E('div',{class:'cw bad'},E('b',{},'⛔ Possibili accavallamenti'),...ov.map(([a,c2,who])=>E('div',{},(a.time||'')+' '+a.title+' ↔ '+(c2.time||'')+' '+c2.title+(who.length?' ('+who.join(', ')+')':'')))):null,
     items.length?items.map(t=>tRow(t,{noDate:1,tm:1})):E('p',{class:'mu'},'Nessun impegno: tocca «+ Aggiungi» per inserirne uno.')),
-   total?E('details',{class:'card'},E('summary',{style:'cursor:pointer;font-weight:600'},'📜 Tutti gli impegni di '+MESI[mo2]+' ('+total+')'),...Object.keys(by).sort().map(dt=>E('div',{style:'margin-top:8px'},E('div',{class:'dh'+(dt===T?' on':'')},E('b',{},fmtD(dt)),E('span',{class:'mu'},by[dt].length)),by[dt].map(t=>tRow(t,{noDate:1,tm:1}))))):null,
-   (()=>{const nd=op.filter(t=>!t.due);return nd.length?sec('📥 Da pianificare (senza data)',nd,{}):null})())}
+   total?E('details',{class:'card',open:matchMedia('(min-width:1000px)').matches},E('summary',{style:'cursor:pointer;font-weight:600'},'📜 Tutti gli impegni di '+MESI[mo2]+' ('+total+')'),...Object.keys(by).sort().map(dt=>E('div',{style:'margin-top:8px'},E('div',{class:'dh'+(dt===T?' on':'')},E('b',{},fmtD(dt)),E('span',{class:'mu'},by[dt].length)),by[dt].map(t=>tRow(t,{noDate:1,tm:1}))))):null,
+   (()=>{const nd=op.filter(t=>!t.due);return nd.length?sec('📥 Da pianificare (senza data)',nd,{}):null})()))}
  else if(sc==='arch')body=E('div',{},E('p',{class:'mu',style:'margin:8px 0'},'I ticket completati si nascondono dall\'agenda e restano qui. Tocca ↩ per riportarne uno tra quelli attivi.'),arch.length?arch.map(t=>tRow(t,{arch:1})):E('div',{class:'card mu'},'Archivio vuoto.'));
  else body=E('div',{},...[['Fare','🔵 Da fare'],['Attesa','🟡 In attesa']].map(([s,lb])=>sec(lb,op.filter(t=>t.status===s))));
  const bar=S.tsel?tixBar():null;
- return E('div',{style:S.tsel?'padding-bottom:70px':''},E('div',{class:'row sp'},E('h2',{},'Ticket & interventi'),E('div',{class:'row'},E('button',{class:'btn gh sm',onclick:()=>{S.tsel=S.tsel?null:new Set();render()}},S.tsel?'✕ Fine selezione':'☑ Seleziona'),E('button',{class:'btn sm',onclick:()=>tixModal()},'+ Nuovo'))),isA()?E('a',{class:'btn gh sm',href:'preventivi/',style:'display:inline-block;margin:0 0 8px;text-decoration:none'},'📄 Preventivi'):null,tabs,
+ return E('div',{style:S.tsel?'padding-bottom:70px':''},E('div',{class:'row sp'},E('h2',{},'Ticket & interventi'),E('div',{class:'row'},E('button',{class:'btn gh sm',onclick:()=>{S.tsel=S.tsel?null:new Set();render()}},S.tsel?'✕ Fine selezione':'☑ Seleziona'),E('button',{class:'btn sm',onclick:()=>tixModal()},'+ Nuovo'))),isA()?E('a',{class:'btn gh sm',href:'preventivi/',style:'display:inline-block;margin:0 0 8px;text-decoration:none'},'📄 Preventivi'):null,tabs,TVS.some(x=>x[0]===sc)?E('div',{class:'mu tdef'},tvDef()===sc?'📌 È la vista predefinita':E('a',{href:'#',onclick:e=>{e.preventDefault();tvSet(sc)}},'📌 Usa questa vista come predefinita')):null,
   isA()&&sc!=='oggi'?E('label',{class:'tgl'},E('input',{type:'checkbox',checked:!!S.tmine,onchange:e=>{S.tmine=e.target.checked;render()}}),'Solo i miei ticket (anche assegnati)'):null,sc==='mese'||sc==='arch'?null:tixLegend(),body,bar)}
 function vRep(){const u=!isA()?uid:repIds().includes(S.sel||uid)?S.sel||uid:repIds()[0]||uid,y=S.m.getFullYear(),mo=S.m.getMonth(),r=calc(u,y,mo),n=new Date(y,mo+1,0).getDate(),rows=[];
  for(let i=1;i<=n;i++){const dt=ymd(new Date(y,mo,i)),d=S.days[u+'_'+dt];if(d)rows.push([dt,d.in,d.out||'',d.pause||0,f1(net(d)),f1(Math.min(net(d),std())),f1(ot(net(d)))])}
@@ -521,7 +532,7 @@ function render(){if(!uid)return;role=owner?'super':S.staff[uid]?.role||'user';c
  const pend=Object.values(S.reqs).filter(q=>q.status==='pending').length;
  $('#nav').replaceChildren(...tabs.map(([k,i,l])=>E('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.sel=null;render()}},E('span',{},i),l,k==='req'&&isA()&&pend?E('i',{},pend):null)));
  if(S.tab==='team'&&!isA())S.tab='oggi';
- $('#v').replaceChildren({oggi:vOggi,cal:vCal,req:vReq,tix:vTix,rep:vRep,team:vTeam}[S.tab]());scrollTo(0,y)}
+ $('#v').classList.toggle('wide',S.tab==='tix'&&(S.tv||tvDef())==='mese');$('#v').replaceChildren({oggi:vOggi,cal:vCal,req:vReq,tix:vTix,rep:vRep,team:vTeam}[S.tab]());scrollTo(0,y)}
 /* promemoria */
 function alertFx(){try{navigator.vibrate&&navigator.vibrate([400,150,400,150,800])}catch(e){}try{const C=window.AudioContext||window.webkitAudioContext,x=new C(),t=x.currentTime;[0,.35,.7].forEach((o,i)=>{const g=x.createGain(),n=x.createOscillator();n.type='sine';n.frequency.value=i===2?1320:988;g.gain.setValueAtTime(.0001,t+o);g.gain.exponentialRampToValueAtTime(.6,t+o+.02);g.gain.exponentialRampToValueAtTime(.0001,t+o+.3);n.connect(g);g.connect(x.destination);n.start(t+o);n.stop(t+o+.32)});setTimeout(()=>x.close(),1500)}catch(e){}}
 function seen(k,set){const key='pr_'+today()+'_'+k;try{if(set)localStorage.setItem(key,'1');return!!localStorage.getItem(key)}catch(e){return window['_'+key]=set||window['_'+key]}}
