@@ -59,12 +59,19 @@ em.modifica{background:var(--wa)!important}.faq{max-height:60vh;overflow:auto}.f
 .tgl{display:flex;align-items:center;gap:8px;padding:5px 0;margin:0}.tgl input{width:auto}.perm{margin-top:8px;border-top:1px solid var(--bd);padding-top:6px}input[readonly]{opacity:.7}
 
 .cal.agc{display:block}.chip .ct,.chip.c3,.more.dd{display:none}.tdef{font-size:12px;margin:-4px 0 8px}.tdef a{color:var(--ac);font-weight:600}
-@media(min-width:1000px){main#v.wide{max-width:1480px}
- .tsplit{display:grid;grid-template-columns:minmax(600px,1.7fr) minmax(380px,1fr);gap:18px;align-items:start}
+.trow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:2px 0 8px}.trow .tgl{padding:0}.tlk{display:flex;align-items:center;gap:10px;font-size:12px}.tlk a:not(.btn){color:var(--ac);font-weight:600}
+/* telefono: calendario compatto (puntini) così l'elenco del giorno resta subito visibile sotto */
+@media(max-width:699px){.tsplit .mg{gap:3px}.tsplit .mc{min-height:46px;padding:3px 2px!important}.tsplit .mc .dn{justify-content:center;font-size:13px}.tsplit .mc .wr{display:none}
+ .tsplit .mc .chips{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:3px;margin-top:3px}.tsplit .mc .chip{font-size:0;line-height:0;width:7px;height:7px;border-radius:50%;padding:0;border:1px solid rgba(255,255,255,.7)}.tsplit .more.mm{display:none}.tsplit .hint{margin:2px 0 6px!important;font-size:11px}
+ .tsplit .tright .card:first-child{margin-top:4px!important}}
+/* schermo largo o telefono in orizzontale: calendario a sinistra, elenco a destra */
+@media(min-width:700px){.tsplit{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
  .tsplit .tright{position:sticky;top:64px;max-height:calc(100vh - 84px);overflow:auto;padding-right:2px}
- .tsplit .mg{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-content:start}.tsplit .mg>div{min-width:0}.tsplit .mc{min-height:88px;padding:5px!important;font-size:15px}.tsplit .mh{font-size:13px;padding:4px 0;min-height:0!important;height:auto}
- .tsplit .chip{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px;text-align:left;padding:2px 5px;margin-top:3px}
- .tsplit .chip .ct{display:inline}.tsplit .chip.c3{display:block}.tsplit .more.mm{display:none}.tsplit .more.dd{display:block}.tsplit .hint{display:none}}
+ .tsplit .mg{grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;align-content:start}.tsplit .mg>div{min-width:0}
+ .tsplit .mc{min-height:72px;padding:4px!important}.tsplit .mh{font-size:12px;min-height:0!important;height:auto;padding:3px 0}
+ .tsplit .chip{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;text-align:left;padding:1px 4px;margin-top:2px}
+ .tsplit .chip.c3{display:block}.tsplit .more.mm{display:none}.tsplit .more.dd{display:block}.tsplit .hint{display:none}}
+@media(min-width:1000px){main#v.wide{max-width:1480px}.tsplit .chip .ct{display:inline}.tsplit{grid-template-columns:minmax(600px,1.7fr) minmax(380px,1fr);gap:18px}.tsplit .mc{min-height:88px;padding:5px!important;font-size:15px}.tsplit .mh{font-size:13px;padding:4px 0}.tsplit .mg{gap:6px}.tsplit .chip{font-size:11.5px;padding:2px 5px;margin-top:3px}}
 </style></head><body>
 <header><div class="hl"><img id="logo" alt="" hidden><div><h1>⏱️ Presenze & Ticket Pro</h1><small id="who"></small></div></div><span style="display:flex;gap:8px;align-items:center"><button class="badge" id="bell" onclick="notifPanel()" style="border:0;color:#fff;cursor:pointer;font-size:15px">🔔</button><span class="badge" id="role"></span></span></header>
 <div id="inst"></div>
@@ -435,8 +442,7 @@ function vTix(){tVis=[];hidePv();const T=today(),sc=S.tv||(S.tv=tvDef()),vis=Obj
  else if(sc==='arch')body=E('div',{},E('p',{class:'mu',style:'margin:8px 0'},'I ticket completati si nascondono dall\'agenda e restano qui. Tocca ↩ per riportarne uno tra quelli attivi.'),arch.length?arch.map(t=>tRow(t,{arch:1})):E('div',{class:'card mu'},'Archivio vuoto.'));
  else body=E('div',{},...[['Fare','🔵 Da fare'],['Attesa','🟡 In attesa']].map(([s,lb])=>sec(lb,op.filter(t=>t.status===s))));
  const bar=S.tsel?tixBar():null;
- return E('div',{style:S.tsel?'padding-bottom:70px':''},E('div',{class:'row sp'},E('h2',{},'Ticket & interventi'),E('div',{class:'row'},E('button',{class:'btn gh sm',onclick:()=>{S.tsel=S.tsel?null:new Set();render()}},S.tsel?'✕ Fine selezione':'☑ Seleziona'),E('button',{class:'btn sm',onclick:()=>tixModal()},'+ Nuovo'))),isA()?E('a',{class:'btn gh sm',href:'preventivi/',style:'display:inline-block;margin:0 0 8px;text-decoration:none'},'📄 Preventivi'):null,tabs,TVS.some(x=>x[0]===sc)?E('div',{class:'mu tdef'},tvDef()===sc?'📌 È la vista predefinita':E('a',{href:'#',onclick:e=>{e.preventDefault();tvSet(sc)}},'📌 Usa questa vista come predefinita')):null,
-  isA()&&sc!=='oggi'?E('label',{class:'tgl'},E('input',{type:'checkbox',checked:!!S.tmine,onchange:e=>{S.tmine=e.target.checked;render()}}),'Solo i miei ticket (anche assegnati)'):null,sc==='mese'||sc==='arch'?null:tixLegend(),body,bar)}
+ return E('div',{style:S.tsel?'padding-bottom:70px':''},E('div',{class:'row sp'},E('h2',{},'Ticket & interventi'),E('div',{class:'row'},E('button',{class:'btn gh sm',onclick:()=>{S.tsel=S.tsel?null:new Set();render()}},S.tsel?'✕ Fine selezione':'☑ Seleziona'),E('button',{class:'btn sm',onclick:()=>tixModal()},'+ Nuovo'))),tabs,E('div',{class:'trow'},isA()&&sc!=='oggi'?E('label',{class:'tgl'},E('input',{type:'checkbox',checked:!!S.tmine,onchange:e=>{S.tmine=e.target.checked;render()}}),'Solo i miei'):E('span',{}),E('span',{class:'tlk'},TVS.some(x=>x[0]===sc)?(tvDef()===sc?E('span',{class:'mu'},'📌 Vista predefinita'):E('a',{href:'#',onclick:e=>{e.preventDefault();tvSet(sc)}},'📌 Rendi predefinita')):null,isA()?E('a',{class:'btn gh sm',href:'preventivi/',style:'text-decoration:none'},'📄 Preventivi'):null)),sc==='mese'||sc==='arch'?null:tixLegend(),body,bar)}
 function vRep(){const u=!isA()?uid:repIds().includes(S.sel||uid)?S.sel||uid:repIds()[0]||uid,y=S.m.getFullYear(),mo=S.m.getMonth(),r=calc(u,y,mo),n=new Date(y,mo+1,0).getDate(),rows=[];
  for(let i=1;i<=n;i++){const dt=ymd(new Date(y,mo,i)),d=S.days[u+'_'+dt];if(d)rows.push([dt,d.in,d.out||'',d.pause||0,f1(net(d)),f1(Math.min(net(d),std())),f1(ot(net(d)))])}
  const tot=[['Lavoro',r.w],['Straordinario',r.o],['Permesso',r.p],['Ferie',r.f],['Malattia',r.s]];
