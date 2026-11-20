@@ -43,6 +43,7 @@ let catalog=store.get("listino",null)||DEF_CAT.slice();
   const byCode={};F.forEach(x=>byCode[key(x.codice)]=x);
   catalog.forEach(x=>{if(!x.img&&byCode[key(x.codice)])x.img=byCode[key(x.codice)].img});store.set("listinoFornVer",ver);store.set("listino",catalog)})();
 if(catalog.some(x=>x.codice==="CLM-12"))catalog=DEF_CAT.concat(catalog.filter(x=>!["CLM-12","TUB-14","MO-INST","MO-ORA","STF-50","POMPA"].includes(x.codice)));
+const CONN_DEF={connFinale:"PREZZO FINALE A VOI RISERVATO",voipTitolo:"LISTINO VOIP (tariffa al minuto iva esclusa senza scatto alla risposta)",connNote:"I prezzi sopra indicati si intendono iva esclusa",connDurata:"Durata minima contrattuale 24 mesi"};
 let archive=store.get("archivio",null);
 let q=store.get("bozza",null);
 if(!q)q=newQuote(false);
@@ -50,7 +51,7 @@ normalize(q);
 // bozza non ancora salvata: data di oggi
 if(!q.salvato)q.data=today();
 if(!archive)archive=[];
-function normalize(x){if(!x.layout)x.layout="lumia";if(x.titoloTab==null)x.titoloTab="";if(x.dataTab==null)x.dataTab=true;if(!x.totIva)x.totIva="piu";
+function normalize(x){if(!x.tipo)x.tipo="lavoro";if(!Array.isArray(x.conn))x.conn=[];if(!Array.isArray(x.voip))x.voip=[];Object.keys(CONN_DEF).forEach(k=>{if(x[k]==null)x[k]=CONN_DEF[k]});if(!x.layout)x.layout="lumia";if(x.titoloTab==null)x.titoloTab="";if(x.dataTab==null)x.dataTab=true;if(!x.totIva)x.totIva="piu";
   x.righe.forEach(r=>{if(r.pers==null)r.pers=1;if(r.codice==null)r.codice=""});return x}
 
 function numOf(v){const m=String(v||"").replace(az.pref||"\u0000","").match(/\d+/);return m?parseInt(m[0],10):0}
@@ -60,7 +61,7 @@ function blankRow(cat){return{id:uid(),cat:cat||"mat",codice:"",titolo:"",descr:
 function newQuote(sample){
   const base={id:uid(),numero:nextNumber(),data:today(),validita:30,rev:"",oggetto:"",
     cliente:{nome:"",piva:"",cf:"",legale:"",esecutiva:"",ref:"",tel:"",email:"",sdi:""},
-    righe:[],sconto:0,scontoTipo:"%",iva:n(az.iva)||22,arr:"0",show:"all",showImg:true,showListino:true,layout:"lumia",titoloTab:"",dataTab:true,totIva:"piu",
+    tipo:"lavoro",conn:[],voip:[],righe:[],sconto:0,scontoTipo:"%",iva:n(az.iva)||22,arr:"0",show:"all",showImg:true,showListino:true,layout:"lumia",titoloTab:"",dataTab:true,totIva:"piu",
     note:az.note||"",pag:az.pag||"",tempi:"",cond:az.cond||"",salvato:false};
   if(sample){
     Object.assign(base,{oggetto:"Proposta di abbonamento servizi di telecomunicazioni",titoloTab:"ESTENSIONE TVCC",
@@ -94,13 +95,13 @@ function calc(qq){
 }
 
 /* ---------- binding form preventivo ---------- */
-const QF=["numero","data","validita","rev","oggetto","titoloTab","layout","totIva","sconto","scontoTipo","iva","arr","show","note","pag","tempi","cond"];
+const QF=["tipo","connFinale","voipTitolo","connNote","connDurata","numero","data","validita","rev","oggetto","titoloTab","layout","totIva","sconto","scontoTipo","iva","arr","show","note","pag","tempi","cond"];
 const CF=["nome","piva","cf","legale","esecutiva","ref","tel","email","sdi"];
 function fillForm(){
   QF.forEach(k=>$("#q_"+k).value=q[k]??"");
   CF.forEach(k=>$("#c_"+k).value=q.cliente[k]??"");
   $("#q_showImg").checked=!!q.showImg;$("#q_showListino").checked=!!q.showListino;$("#q_dataTab").checked=!!q.dataTab;
-  renderRows();renderSheet();
+  applyTipo();renderRows();renderConnRows();renderSheet();
 }
 QF.forEach(k=>$("#q_"+k).addEventListener("input",e=>{q[k]=e.target.value;changed()}));
 CF.forEach(k=>$("#c_"+k).addEventListener("input",e=>{q.cliente[k]=e.target.value;changed()}));
@@ -110,6 +111,44 @@ $("#q_showListino").addEventListener("change",e=>{q.showListino=e.target.checked
 
 let saveT;
 function changed(rerenderRows){if(rerenderRows)renderRows();else updateRowTotals();renderSheet();clearTimeout(saveT);saveT=setTimeout(()=>store.set("bozza",q),300)}
+
+/* ---------- preventivo "Connessione" (abbonamento servizi) ---------- */
+const blankConn=()=>({id:uid(),titolo:"",dett:"",qta:1,una:0,can:0});
+const blankVoip=()=>({id:uid(),label:"",prezzo:0});
+function applyTipo(){
+  document.body.classList.toggle("tconn",q.tipo==="conn");
+  if(q.tipo==="conn"){if(!q.conn.length)q.conn.push(blankConn());if(!q.voip.length)q.voip.push({id:uid(),label:"RESTO DEL MONDO",prezzo:0.35});
+    if(!q.oggetto)q.oggetto="Proposta di abbonamento servizi di telecomunicazioni";$("#q_oggetto").value=q.oggetto}
+}
+function calcConn(qq){let una=0,can=0;(qq.conn||[]).forEach(r=>{una+=n(r.una)*n(r.qta);can+=n(r.can)*n(r.qta)});return{una:r2(una),can:r2(can)}}
+function renderConnRows(){
+  const box=$("#connRows");if(!box)return;
+  box.innerHTML=q.conn.map((r,i)=>`<div class="row-card" data-i="${i}"><div class="row-fields" style="grid-column:1/-1">
+    <textarea class="inp c4" data-k="titolo" rows="2" placeholder="Servizio / prodotto (anche su più righe)">${esc(r.titolo)}</textarea>
+    <textarea class="inp c2" data-k="dett" rows="2" placeholder="Dettaglio piccolo a lato (facoltativo)">${esc(r.dett)}</textarea>
+    <label class="f">Q.tà<input class="inp" data-k="qta" type="number" step="any" min="0" value="${esc(r.qta)}"></label>
+    <label class="f c2">Una tantum €<input class="inp" data-k="una" type="number" step="0.01" min="0" value="${esc(r.una)}"></label>
+    <label class="f c2">Canone mensile €<input class="inp" data-k="can" type="number" step="0.01" min="0" value="${esc(r.can)}"></label>
+    <div class="row-tools"><button class="btn small" data-act="up">↑</button><button class="btn small" data-act="down">↓</button><button class="btn small" data-act="dup">Duplica</button><button class="btn small danger" data-act="del">Elimina</button></div>
+  </div></div>`).join("")||`<div class="empty">Nessun servizio.</div>`;
+  const t=calcConn(q);$("#connTot").innerHTML=`Totale una tantum <b>${eur.format(t.una)}</b> · canone mensile <b>${eur.format(t.can)}</b> (IVA esclusa)`;
+  const vb=$("#voipRows");vb.innerHTML=q.voip.map((r,i)=>`<div class="row-card" data-i="${i}"><div class="row-fields" style="grid-column:1/-1">
+    <input class="inp c4" data-k="label" value="${esc(r.label)}" placeholder="Destinazione (es. RESTO DEL MONDO)">
+    <label class="f c2">Tariffa € / min<input class="inp" data-k="prezzo" type="number" step="0.001" min="0" value="${esc(r.prezzo)}"></label>
+    <div class="row-tools"><button class="btn small" data-act="up">↑</button><button class="btn small" data-act="down">↓</button><button class="btn small danger" data-act="del">Elimina</button></div></div></div>`).join("")||`<div class="empty">Nessuna tariffa: la tabella VoIP non verrà mostrata.</div>`;
+}
+function listEditor(box,key,blank,after){
+  box.addEventListener("input",e=>{const card=e.target.closest(".row-card"),k=e.target.dataset.k;if(!card||!k)return;q[key][+card.dataset.i][k]=e.target.value;
+    const t=calcConn(q);$("#connTot").innerHTML=`Totale una tantum <b>${eur.format(t.una)}</b> · canone mensile <b>${eur.format(t.can)}</b> (IVA esclusa)`;changed()});
+  box.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const L=q[key],i=+b.closest(".row-card").dataset.i,act=b.dataset.act;
+    if(act==="del")L.splice(i,1);else if(act==="dup")L.splice(i+1,0,Object.assign({},L[i],{id:uid()}));
+    else{const t=i+(act==="up"?-1:1);if(t<0||t>=L.length)return;[L[i],L[t]]=[L[t],L[i]]}
+    renderConnRows();changed()})
+}
+listEditor($("#connRows"),"conn");listEditor($("#voipRows"),"voip");
+$("#bConnAdd").onclick=()=>{q.conn.push(blankConn());renderConnRows();changed()};
+$("#bVoipAdd").onclick=()=>{q.voip.push(blankVoip());renderConnRows();changed()};
+$("#q_tipo").addEventListener("input",()=>{applyTipo();renderConnRows();changed()});
 
 /* ---------- righe (editor) ---------- */
 $("#webCat").innerHTML=Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
@@ -248,6 +287,30 @@ function lmPrice(x){
 }
 const pgFootHtml=()=>{if(!hasFoot())return "";const f=footLines(),row=a=>a.map(([l,v])=>`<div>${l?`<b>${l}</b>`:""}${esc(v)}</div>`).join("");
   return `<div class="pgsp"></div><div class="pgfoot" style="--ft-line:${esc(footRgb())}"><div class="pfh"><span class="pfn">${esc(f.name)}</span><span class="pfp">1</span></div><div class="pfc"><div>${row(f.L)}</div><div class="pfr">${row(f.R)}</div></div></div>`};
+function renderConn(){
+  const cl=q.cliente,t=calcConn(q),anyDett=q.conn.some(r=>String(r.dett||"").trim());
+  const nl=s=>esc(s).replace(/\n/g,"<br>");
+  const rows=q.conn.map(r=>`<tr class="it">${anyDett?(String(r.dett||"").trim()?`<td class="ds">${nl(r.titolo)}</td><td class="dt">${nl(r.dett)}</td>`:`<td class="ds" colspan="2">${nl(r.titolo)}</td>`):`<td class="ds">${nl(r.titolo)}</td>`}
+    <td class="cq">${num.format(n(r.qta))}</td><td class="cq">${eurP(n(r.una))}</td><td class="cq">${eurP(n(r.can))}</td></tr>`).join("")||`<tr><td colspan="4" style="text-align:center;color:#999">Aggiungi i servizi del preventivo</td></tr>`;
+  const voip=q.voip.length?`<table class="cn" style="margin-top:7mm"><tr><td class="hd2" colspan="2">${esc(q.voipTitolo)}</td></tr>${q.voip.map(r=>`<tr><td class="ds">${esc(r.label)}</td><td class="cq" style="width:28mm">${eurP(n(r.prezzo))}</td></tr>`).join("")}</table>`:"";
+  const note=[q.connNote,q.connDurata].filter(x=>String(x||"").trim());
+  $("#sheet").innerHTML=`<div class="lm" style="--lm-col:${esc(az.colore||"#a4c2f4")}">
+   <div class="lh"><div>${az.logo?`<img src="${esc(az.logo)}" alt="Logo">`:`<b style="font-size:16pt">${esc(az.nome)}</b>`}</div><div class="web">${esc(az.web)}</div></div>
+   <div class="lp">
+    <div class="ogg">OGGETTO:<br>${esc(q.oggetto)}</div>
+    <div class="cli"><div class="cn">Spett. ${esc(cl.nome)}${cl.piva?`<br>p.iva ${esc(cl.piva)}`:""}</div>
+     <div class="ca">${esc(cl.legale)}${cl.esecutiva?`<br>Sede esecutiva: ${esc(cl.esecutiva)}`:""}${cl.cf?`<br>C.F. ${esc(cl.cf)}`:""}${cl.sdi?`<br>Cod. SDI ${esc(cl.sdi)}`:""}${cl.ref?`<br>Alla c.a. ${esc(cl.ref)}`:""}</div></div>
+   </div>
+   <div class="pn">Preventivo ${esc(q.numero)}${q.rev?" "+esc(q.rev):""} del ${fmtDate(q.data)}</div>
+   <table class="cn"><tr><td class="hd2"${anyDett?' colspan="2"':""}>SERVIZIO/PRODOTTO</td><td class="hd2 c">QUANTITA'</td><td class="hd2 c">UNA TANTUM</td><td class="hd2 c">CANONE MENSILE</td></tr>
+    ${rows}
+    <tr class="fin"><td class="tl2" colspan="${anyDett?3:2}">${esc(q.connFinale)}</td><td class="ta2">${eurP(t.una)}</td><td class="ta2">${eurP(t.can)}</td></tr></table>
+   ${voip}
+   ${note.length?`<div class="cnote">${note.map(x=>`<span>${esc(x)}</span>`).join("<span>-</span>")}</div>`:""}
+   ${az.foot?`<div class="after" style="color:#666;font-size:8pt">${esc(az.foot)}</div>`:""}
+   ${pgFootHtml()}
+  </div>`;
+}
 function renderLumia(c){
   const cl=q.cliente,lw=q.showImg;const cols=lw?4:3;
   const rows=Object.keys(CATS).flatMap(k=>c.rows.filter(x=>x.r.cat===k));
@@ -281,6 +344,7 @@ function renderLumia(c){
   </div>`;
 }
 function renderSheet(){
+  if(q.tipo==="conn"){renderConn();return}
   const c=calc(q),cl=q.cliente,show=q.show;
   if(q.layout!=="classico"){renderLumia(c);return}
   const scad=q.data&&n(q.validita)?(()=>{const d=new Date(q.data);d.setDate(d.getDate()+n(q.validita));return d.toISOString().slice(0,10)})():"";
@@ -578,13 +642,14 @@ function saveQuote(silent){
 }
 function renderArchive(){
   const s=$("#arcSearch").value.toLowerCase();
-  const l=archive.filter(a=>!s||(a.numero+" "+a.cliente.nome+" "+a.oggetto).toLowerCase().includes(s));
+  const ft=($("#arcTipo")||{}).value||"";
+  const l=archive.filter(a=>(!s||(a.numero+" "+a.cliente.nome+" "+a.oggetto).toLowerCase().includes(s))&&(!ft||(a.tipo||"lavoro")===ft));
   $("#arcTable").innerHTML=`<tr><th>Numero</th><th>Data</th><th>Cliente</th><th>Oggetto</th><th class="num">Totale</th><th></th></tr>`+
-   (l.length?l.map(a=>`<tr data-id="${a.id}"><td style="font-family:var(--mono)">${esc(a.numero)}</td><td>${fmtDate(a.data)}</td><td>${esc(a.cliente.nome)}</td><td>${esc(a.oggetto).slice(0,80)}</td><td class="num">${eur.format(calc(a).tot)}</td>
+   (l.length?l.map(a=>`<tr data-id="${a.id}"><td style="font-family:var(--mono)">${esc(a.numero)}</td><td>${fmtDate(a.data)}</td><td>${esc(a.cliente.nome)}</td><td><span class="tbadge ${a.tipo==="conn"?"conn":"lav"}">${a.tipo==="conn"?"🌐 Connessione":"🔧 Lavoro"}</span> ${esc(a.oggetto).slice(0,70)}</td><td class="num">${a.tipo==="conn"?(c=>eur.format(c.una)+" una tantum<br>"+eur.format(c.can)+" /mese")(calcConn(a)):eur.format(calc(a).tot)}</td>
    <td style="white-space:nowrap"><button class="btn small" data-a="open">Apri</button> <button class="btn small" data-a="dup">Duplica</button> <button class="btn small danger" data-a="del">Elimina</button></td></tr>`).join("")
    :`<tr><td colspan="6" class="muted">Nessun preventivo salvato. Compila un preventivo e premi «Salva».</td></tr>`);
 }
-$("#arcSearch").addEventListener("input",renderArchive);
+$("#arcSearch").addEventListener("input",renderArchive);$("#arcTipo").addEventListener("input",renderArchive);
 $("#arcTable").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b)return;const id=b.closest("tr").dataset.id,a=archive.find(x=>x.id===id);
   if(b.dataset.a==="open"){q=normalize(JSON.parse(JSON.stringify(a)));fillForm();show("quote")}
   else if(b.dataset.a==="dup"){q=normalize(JSON.parse(JSON.stringify(a)));q.id=uid();q.numero=nextNumber();q.data=today();q.salvato=false;q.rev="";fillForm();show("quote");toast("Copia creata con nuovo numero "+q.numero)}
@@ -628,7 +693,10 @@ $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)
 $("#bSave").onclick=()=>savePdf();
 $("#bOpen").onclick=()=>{$("#filePdf").value="";$("#filePdf").click()};
 $("#filePdf").addEventListener("change",e=>{const f=e.target.files[0];if(f)openPdf(f)});
-$("#bNew").onclick=()=>confirmBox("Iniziare un nuovo preventivo? Le modifiche non salvate andranno perse.",()=>{q=newQuote(false);store.set("bozza",q);fillForm();toast("Nuovo preventivo "+q.numero)});
+$("#bNew").onclick=()=>{modal(`<h3>Nuovo preventivo</h3><p class="hint">Le modifiche non salvate di quello attuale andranno perse. Che tipo di preventivo vuoi fare?</p>
+  <div style="display:grid;gap:8px"><button class="btn primary" id="nvLav">🔧 Lavoro: installazione, prodotti e manodopera</button><button class="btn primary" id="nvCon">🌐 Connessione: abbonamento servizi (una tantum + canone mensile)</button><button class="btn" data-close>Annulla</button></div>`);
+  const go=tipo=>{closeModal();q=newQuote(false);q.tipo=tipo;normalize(q);store.set("bozza",q);fillForm();toast("Nuovo preventivo "+q.numero)};
+  $("#nvLav").onclick=()=>go("lavoro");$("#nvCon").onclick=()=>go("conn")};
 $("#bPrint").onclick=()=>{const old=document.title;document.title=`Preventivo ${q.numero} ${q.cliente.nome}`.replace(/[\/\\:]/g,"-");window.print();setTimeout(()=>document.title=old,1000)};
 
 fillCompany();fillForm();
