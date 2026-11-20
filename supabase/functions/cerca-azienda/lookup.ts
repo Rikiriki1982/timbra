@@ -1,7 +1,7 @@
 // Ricerca dati azienda/ente dal nome.
 //  1) Enti pubblici (Comuni, scuole, ASL...): indice ufficiale IPA (indicepa.gov.it): P.IVA/C.F., indirizzo, PEC, codice SDI.
 //  2) Partita IVA digitata: registro europeo VIES (ragione sociale e sede).
-//  3) Aziende private: se è configurata una chiave di ricerca web (BRAVE_API_KEY oppure GOOGLE_API_KEY + GOOGLE_CX)
+//  3) Aziende private: se è configurata una chiave di ricerca web (TAVILY_API_KEY, SERPER_API_KEY, BRAVE_API_KEY oppure GOOGLE_API_KEY + GOOGLE_CX)
 //     cerca sul web, trova le partite IVA citate e le verifica su VIES.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
 const IPA = 'https://indicepa.gov.it/ipa-dati/api/3/action/datastore_search'
@@ -14,7 +14,7 @@ export type Result = {
 }
 type Hit = { title: string; url: string; snippet: string }
 
-const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
 const STOP = new Set(['di', 'del', 'della', 'dei', 'delle', 'il', 'la', 'lo', 'srl', 'spa', 'snc', 'sas', 's', 'r', 'l', 'p', 'a', 'c', 'n', 'e', 'societa', 'unipersonale'])
 const toks = (s: string) => norm(s).split(' ').filter((t) => t && !STOP.has(t))
 export function similar(q: string, name: string): number {
@@ -87,11 +87,28 @@ async function fromIpa(q: string): Promise<Result[]> {
 
 /* ---------- ricerca web (solo con chiave) ---------- */
 function searchConfigured(): string {
+  if (Deno.env.get('TAVILY_API_KEY')) return 'Tavily'
+  if (Deno.env.get('SERPER_API_KEY')) return 'Serper'
   if (Deno.env.get('BRAVE_API_KEY')) return 'Brave'
   if (Deno.env.get('GOOGLE_API_KEY') && Deno.env.get('GOOGLE_CX')) return 'Google'
   return ''
 }
 async function webSearch(q: string): Promise<Hit[]> {
+  const tav = Deno.env.get('TAVILY_API_KEY')
+  if (tav) {
+    const r = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tav }, body: JSON.stringify({ query: q, max_results: 8, search_depth: 'basic', country: 'italy' }), signal: AbortSignal.timeout(12000) })
+    if (!r.ok) throw new Error('Tavily HTTP ' + r.status)
+    const j = await r.json()
+    return (j?.results ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.url || ''), snippet: String(x.content || '') }))
+  }
+  const ser = Deno.env.get('SERPER_API_KEY')
+  if (ser) {
+    const r = await fetch('https://google.serper.dev/search', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-KEY': ser }, body: JSON.stringify({ q, gl: 'it', hl: 'it', num: 8 }), signal: AbortSignal.timeout(12000) })
+    if (!r.ok) throw new Error('Serper HTTP ' + r.status)
+    const j = await r.json()
+    const kg = j?.knowledgeGraph ? [{ title: String(j.knowledgeGraph.title || ''), url: String(j.knowledgeGraph.website || j.knowledgeGraph.descriptionLink || 'https://www.google.it'), snippet: JSON.stringify(j.knowledgeGraph.attributes || {}) + ' ' + String(j.knowledgeGraph.description || '') }] : []
+    return [...kg, ...(j?.organic ?? []).map((x: Row) => ({ title: String(x.title || ''), url: String(x.link || ''), snippet: String(x.snippet || '') }))]
+  }
   const brave = Deno.env.get('BRAVE_API_KEY')
   if (brave) {
     const j = JSON.parse(await get('https://api.search.brave.com/res/v1/web/search?count=8&country=IT&search_lang=it&q=' + encodeURIComponent(q), { 'X-Subscription-Token': brave, Accept: 'application/json' }))
