@@ -244,6 +244,8 @@ function lmPrice(x){
   if(!r.omaggio&&n(r.sconto)>0)h+=`<br><span style="color:#a15c00">sconto ${num.format(n(r.sconto))}%</span>`;
   return h;
 }
+const pgFootHtml=()=>{if(!hasFoot())return "";const f=footLines(),row=a=>a.map(([l,v])=>`<div>${l?`<b>${l}</b>`:""}${esc(v)}</div>`).join("");
+  return `<div class="pgsp"></div><div class="pgfoot" style="--ft-line:${esc(footRgb())}"><div class="pfh"><span class="pfn">${esc(f.name)}</span><span class="pfp">1</span></div><div class="pfc"><div>${row(f.L)}</div><div class="pfr">${row(f.R)}</div></div></div>`};
 function renderLumia(c){
   const cl=q.cliente,lw=q.showImg;const cols=lw?4:3;
   const rows=Object.keys(CATS).flatMap(k=>c.rows.filter(x=>x.r.cat===k));
@@ -273,6 +275,7 @@ function renderLumia(c){
    </table>
    ${after?`<div class="after">${after}</div>`:""}
    ${az.foot?`<div class="after" style="color:#666;font-size:8pt">${esc(az.foot)}</div>`:""}
+   ${pgFootHtml()}
   </div>`;
 }
 function renderSheet(){
@@ -338,7 +341,7 @@ function renderSheet(){
    </div>
    <div class="sign"><div>Luogo e data</div><div>Per accettazione (timbro e firma del cliente)</div></div>
    ${az.foot?`<div class="foot">${esc(az.foot)}</div>`:""}
-   ${hasFoot()?(()=>{const f=footLines(),row=a=>a.map(([l,v])=>`<div>${l?`<b>${l}</b>`:""}${esc(v)}</div>`).join("");return `<div class="pgfoot"><div class="pfn">${esc(f.name)}</div><div class="pfc"><div>${row(f.L)}</div><div class="pfr">${row(f.R)}</div></div></div>`})():""}`;
+   ${pgFootHtml()}`;
 }
 
 /* ---------- listino ---------- */
@@ -418,9 +421,11 @@ const PDF_MARK="%LUMIA-PREVENTIVO:";
 function fileName(){return (`Preventivo ${q.numero} - ${q.cliente.nome||"cliente"}`).replace(/[\\/:*?"<>|]+/g,"-").replace(/[.\s]+$/,"").slice(0,120)+".pdf"}
 
 /* piè di pagina a due colonne (nome, P.IVA, capitale, PEC | sede, tel, email) */
+const footRgb=()=>{const h=(az.colore||"#a4c2f4").replace("#",""),c=[0,2,4].map(i=>parseInt(h.substr(i,2),16)||160);return `rgb(${Math.round(c[0]*.6)},${Math.round(c[1]*.75)},${Math.round(Math.min(255,c[2]*.92))})`};
+const footMail=()=>{let m=String(az.email||"").trim();if(az.pec&&m.includes("/"))m=m.split("/").map(x=>x.trim()).filter(x=>x&&x.toLowerCase()!==String(az.pec).trim().toLowerCase()).join(" / ");return m};
 const footLines=()=>({
   L:[az.piva&&["P.IVA ",az.piva],az.capsoc&&["CAP. SOC. ",az.capsoc],az.pec&&["PEC ",az.pec]].filter(Boolean),
-  R:[az.sede&&["",az.sede],az.tel&&["TEL ",az.tel],az.email&&["MAIL ",az.email]].filter(Boolean),
+  R:[az.sede&&["",az.sede],az.tel&&["TEL ",az.tel],footMail()&&["MAIL ",footMail()]].filter(Boolean),
   name:az.ragione||az.nome||""});
 const hasFoot=()=>{const f=footLines();return !!(f.name||f.L.length||f.R.length)};
 const FOOT_MM=24;
@@ -429,7 +434,7 @@ function drawFoot(pdf,n){
   pdf.setPage(n);
   pdf.setTextColor(0);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text(String(n),W-mx,y0+2,{align:"right"});
   pdf.setFontSize(9.5);pdf.text(f.name,mx,y0+2);
-  pdf.setDrawColor(rgb[0],rgb[1],rgb[2]);pdf.setLineWidth(0.5);pdf.line(mx,y0+4.5,W-mx,y0+4.5);
+  {const k=footRgb().match(/\d+/g).map(Number);pdf.setDrawColor(k[0],k[1],k[2])}pdf.setLineWidth(0.7);pdf.line(mx,y0+4.5,W-mx,y0+4.5);
   pdf.setFontSize(7.2);
   f.L.forEach(([lab,v],i)=>{const yy=y0+9+i*3.6;pdf.setFont("helvetica","bold");pdf.text(lab,mx,yy);const w=pdf.getTextWidth(lab.trim())+1.2;pdf.setFont("helvetica","normal");pdf.text(String(v),mx+w,yy)});
   f.R.forEach(([lab,v],i)=>{const yy=y0+9+i*3.6;pdf.setFont("helvetica","normal");const w=pdf.getTextWidth(String(v));pdf.text(String(v),W-mx,yy,{align:"right"});if(lab){pdf.setFont("helvetica","bold");pdf.text(lab.trim(),W-mx-w-1.2,yy,{align:"right"})}});
@@ -438,7 +443,7 @@ async function makePdf(){
   if(!window.html2canvas||!window.jspdf)throw new Error("lib");
   // copia pulita del foglio, larga esattamente 210 mm, senza ombre né altezza minima
   const wrap=document.createElement("div");wrap.style.cssText="position:absolute;left:-30000px;top:0;width:210mm;background:#fff";
-  const el=$("#sheet").cloneNode(true);el.querySelectorAll(".pgfoot").forEach(x=>x.remove());el.removeAttribute("id");el.style.cssText="box-shadow:none;margin:0;min-height:0;width:210mm";
+  const el=$("#sheet").cloneNode(true);el.querySelectorAll(".pgfoot,.pgsp").forEach(x=>x.remove());el.removeAttribute("id");el.style.cssText="box-shadow:none;margin:0;min-height:0;width:210mm";
   wrap.appendChild(el);document.body.appendChild(wrap);
   await Promise.all([...el.querySelectorAll("img")].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r})));
   let canvas;

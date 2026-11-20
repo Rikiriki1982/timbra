@@ -128,7 +128,7 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
 .sheet .save{font-size:8.4pt;color:#1d7a46;text-align:right;margin-top:1.5mm;font-weight:600}
 .sheet .sign{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:12mm;font-size:8.6pt;break-inside:avoid}
 .sheet .sign div{border-top:1px solid var(--paper-ink);padding-top:1.5mm;color:#45505b}
-.sheet .pgfoot{margin-top:8mm;border-top:2px solid var(--paper-line,#a4c2f4);padding-top:2mm;font-size:7.2pt;color:#000}.sheet .pgfoot .pfn{font-weight:700;font-size:9.5pt;margin-bottom:1mm}.sheet .pgfoot .pfc{display:flex;justify-content:space-between;gap:10mm}.sheet .pgfoot .pfr{text-align:right}
+.sheet{display:flex;flex-direction:column}.sheet>.lm{flex:1;display:flex;flex-direction:column;min-width:0}.sheet .pgsp{flex:1 1 auto;min-height:8mm}.sheet .pgfoot{border-top:.75mm solid var(--ft-line,#6292dc);padding-top:2mm;font-size:7.2pt;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}.sheet .pgfoot .pfh{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1.6mm}.sheet .pgfoot .pfn{font-weight:700;font-size:9.5pt}.sheet .pgfoot .pfp{font-weight:700;font-size:10pt}.sheet .pgfoot .pfc{display:flex;justify-content:space-between;gap:10mm;line-height:1.5}.sheet .pgfoot .pfr{text-align:right}
 .sheet .foot{margin-top:8mm;font-size:7.6pt;color:#6a7580;border-top:1px solid var(--paper-line);padding-top:2mm;white-space:pre-line}
 
 /* ---------- Modello "Tabella" (stile Lumia) ---------- */

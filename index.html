@@ -19,7 +19,7 @@ main{max-width:860px;margin:0 auto;padding:14px}
 .stat{flex:1;min-width:90px;background:var(--bg);border-radius:12px;padding:10px;text-align:center}.stat b{display:block;font-size:20px}
 .btn{border:0;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:600;background:var(--ac);color:#fff;cursor:pointer}
 .btn.ok{background:var(--ok)}.btn.er{background:var(--er)}.btn.gh{background:var(--bg);color:var(--tx);border:1px solid var(--bd)}.btn.sm{padding:6px 10px;font-size:13px}
-.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:disabled{opacity:.4;cursor:not-allowed}.pbig{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}.pbig .btn{flex:1;min-width:150px;padding:16px 14px;font-size:17px}
 .hero .row{margin-top:12px}.hero .btn{flex:1}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
 nav button{flex:1;border:0;background:none;color:var(--mu);padding:8px 2px;font-size:11px;cursor:pointer;position:relative}
@@ -273,7 +273,7 @@ function vOggi(){const n=new Date(),d=S.days[uid+'_'+today()];
   E('div',{class:'row'},stat('Entrata',d?.in||'--:--'),stat('Uscita',d?.out||'--:--'),stat('Ore nette',d?.out?f1(net(d)):'—')),
   P('canPunch')?null:E('p',{class:'mu'},role==='super'?'Hai scelto di non timbrare. Puoi riattivarlo dalla scheda Team, nella tua scheda.':'La timbratura non è abilitata per il tuo profilo. Contatta un amministratore.'),E('div',{class:'row'},E('button',{class:'btn ok',disabled:!!d?.in||!P('canPunch'),onclick:punchIn},'🟢 Timbra entrata'),E('button',{class:'btn er',disabled:!d?.in||!!d?.out||!P('canPunch'),onclick:punchOut},'🔴 Timbra uscita'))),
   E('div',{class:'card'},E('b',{},'🔔 Promemoria'),E('p',{class:'mu'},'Se all\'orario di entrata ('+cf().in+') non hai timbrato, e all\'orario di uscita ('+cf().out+') non hai chiuso la giornata, l\'app ti avvisa con un popup e ti chiede a che ora. Con le notifiche attive il promemoria arriva anche ad app chiusa.'),
-   canPush()?(pushOn?E('span',{},E('button',{class:'btn gh sm',onclick:pushTest},'🔔 Invia notifica di prova'),' ',E('button',{class:'btn gh sm',onclick:pushOff},'🔕 Disattiva notifiche su questo dispositivo')):E('button',{class:'btn sm',onclick:pushEnable},'🔔 Attiva notifiche (anche ad app chiusa)')):pushApi&&pushApi.key&&isIOS()&&!isStd()?E('p',{class:'mu'},'Su iPhone le notifiche funzionano solo dopo aver installato l\'app sulla schermata Home (tasto «Installa» in alto).'):typeof Notification!=='undefined'&&Notification.permission==='default'?E('button',{class:'btn gh sm',onclick:()=>Notification.requestPermission().then(render)},'Attiva notifiche del dispositivo'):null,
+   canPush()?(pushOn?E('span',{},E('div',{class:'pbig'},E('button',{class:'btn',onclick:pushTest},'🔔 Invia notifica di prova'),E('button',{class:'btn gh',onclick:pushOff},'🔕 Disattiva notifiche'))):E('button',{class:'btn sm',onclick:pushEnable},'🔔 Attiva notifiche (anche ad app chiusa)')):pushApi&&pushApi.key&&isIOS()&&!isStd()?E('p',{class:'mu'},'Su iPhone le notifiche funzionano solo dopo aver installato l\'app sulla schermata Home (tasto «Installa» in alto).'):typeof Notification!=='undefined'&&Notification.permission==='default'?E('button',{class:'btn gh sm',onclick:()=>Notification.requestPermission().then(render)},'Attiva notifiche del dispositivo'):null,
    E('button',{class:'btn gh sm',onclick:()=>checkMissing()||toast('Nessun giorno mancante ✅')},'Controlla giorni mancanti'),' ',E('button',{class:'btn gh sm',onclick:()=>remind(true)},'Prova popup'),' ',E('button',{class:'btn gh sm',onclick:()=>emailModal()},'👤 Profilo e calendario')))}
 function qd(q){if(q.type!=='modifica')return'';const a=q.as||'work';return q.off||a==='off'?' · non lavorato':a==='work'?' · '+q.in+' → '+(q.out||'…')+' · pausa '+(q.pause||0)+' min':' · '+TL[a]+(a==='permesso'?' '+q.hours+' h/giorno':'')}
 function chgModal(dt){const d=S.days[uid+'_'+dt]||{},cr=P('canRequest'),RG=['ferie','malattia','permesso'];
@@ -523,15 +523,16 @@ function render(){if(!uid)return;role=owner?'super':S.staff[uid]?.role||'user';c
  if(S.tab==='team'&&!isA())S.tab='oggi';
  $('#v').replaceChildren({oggi:vOggi,cal:vCal,req:vReq,tix:vTix,rep:vRep,team:vTeam}[S.tab]());scrollTo(0,y)}
 /* promemoria */
+function alertFx(){try{navigator.vibrate&&navigator.vibrate([400,150,400,150,800])}catch(e){}try{const C=window.AudioContext||window.webkitAudioContext,x=new C(),t=x.currentTime;[0,.35,.7].forEach((o,i)=>{const g=x.createGain(),n=x.createOscillator();n.type='sine';n.frequency.value=i===2?1320:988;g.gain.setValueAtTime(.0001,t+o);g.gain.exponentialRampToValueAtTime(.6,t+o+.02);g.gain.exponentialRampToValueAtTime(.0001,t+o+.3);n.connect(g);g.connect(x.destination);n.start(t+o);n.stop(t+o+.32)});setTimeout(()=>x.close(),1500)}catch(e){}}
 function seen(k,set){const key='pr_'+today()+'_'+k;try{if(set)localStorage.setItem(key,'1');return!!localStorage.getItem(key)}catch(e){return window['_'+key]=set||window['_'+key]}}
 let shownIn=false,shownOut=false;function remind(force){if(!P('canPunch'))return;const n=new Date(),m=n.getHours()*60+n.getMinutes(),d=S.days[uid+'_'+today()];if(!force&&(n.getDay()%6===0||reqsOn(uid,today()).length))return;
  let k=null;if(force)k=d?.in&&!d.out?'out':'in';else if(m>=mn(cf().in)&&!d?.in&&!d?.off&&m<mn(cf().out)&&!shownIn)k='in';else if(m>=mn(cf().out)&&d?.in&&!d.out&&!shownOut)k='out';
  if(!k||$('#ov'))return;const msg=k==='in'?'Non hai ancora timbrato l\'entrata (orario '+cf().in+').':'Sono le '+cf().out+': ricordati di timbrare l\'uscita.';
- try{if(Notification.permission==='granted')new Notification('Presenze & Ticket Pro',{body:msg})}catch(e){}
+ alertFx();try{if(Notification.permission==='granted')new Notification('Presenze & Ticket Pro',{body:msg,requireInteraction:true,vibrate:[400,150,400,150,800]})}catch(e){}
  if(k==='in'){shownIn=true;fix([{dt:today(),k:'none'}],0);return}if(k==='out'){shownOut=true;outModal(force?hm(new Date()):cf().out);return}modal('⚠️ Promemoria timbratura',E('p',{},msg),[E('button',{class:'btn gh',onclick:()=>{seen(k,1);close()}},k==='in'?'Ho già timbrato / ignora':'Più tardi'),E('button',{class:k==='in'?'btn ok':'btn er',onclick:()=>{seen(k,1);close();k==='in'?punchIn():punchOut()}},k==='in'?'Timbra entrata':'Timbra uscita')])}
 function missing(){const st=S.staff[uid],a=new Date(new Date().getFullYear(),new Date().getMonth(),1),out=[],t=today();a.setHours(12,0,0,0);
  for(const d=new Date(a);ymd(d)<t;d.setDate(d.getDate()+1)){const dt=ymd(d);if(d.getDay()%6===0)continue;const r=S.days[uid+'_'+dt];
-  if(reqsOn(uid,dt,1).length||r?.off)continue;if(!r)out.push({dt,k:'none'});else if(r.in&&!r.out)out.push({dt,k:'noout'})}
+  const rq=reqsOn(uid,dt,1);if(rq.some(q=>q.type==='modifica'))continue;if(r?.in&&!r.out){out.push({dt,k:'noout'});continue}if(r?.off||rq.some(q=>q.type!=='permesso'))continue;if(!r)out.push({dt,k:'none'})}
  return out}
 function checkMissing(){if($('#ov')||!P('canPunch'))return false;const l=missing();if(!l.length)return false;fix(l,0);return true}
 function fix(l,i){if(i>=l.length){close();toast('Tutto a posto ✅');return}const{dt,k}=l[i],r=S.days[uid+'_'+dt]||{};
@@ -592,5 +593,5 @@ addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;instBar()});a
  for(const c of['staff','days','reqs','tix','groups','ex','settings','notifs'])db.collection(c).onSnapshot(sn=>{S[c]=Object.fromEntries(sn.docs.map(d=>[d.id,{...d.data(),id:d.id}]));render()},err);
  render();pushState();handleShare();setInterval(()=>{const c=$('#clk');if(c)c.textContent=hm(new Date());remind()},20000);document.addEventListener('visibilitychange',()=>!document.hidden&&(checkMissing()||remind()));setTimeout(()=>{const st=S.staff[uid]||{};if(!st.email||st.calSync===undefined)emailModal();else if(role==='super'&&!S.settings.company)setModal(true);else if(!checkMissing())remind()},1500)
 }catch(e){$('#v').replaceChildren(E('div',{class:'card'},'Errore di avvio: '+e.message))}})();
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='push')toast('🔔 '+(d.body||d.title))});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='push'){toast('🔔 '+(d.body||d.title));alertFx()}});
 </script></body></html>

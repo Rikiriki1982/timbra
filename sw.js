@@ -1,6 +1,6 @@
 // Service worker: l'app resta apribile anche offline. Rete per prima, cache come riserva.
 // Memorizza solo i file dell'app (stessa origine), mai le chiamate a Supabase.
-const C = 'ptp-pages1';
+const C = 'ptp-pages2';
 const FILES = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(C).then(c => c.addAll(FILES)).catch(() => {}));
@@ -43,7 +43,8 @@ self.addEventListener('push', e => {
       if (v.length) { v.forEach(c => c.postMessage({ type: 'push', title: d.title, body: d.body })); return; } // app aperta: avviso dentro l'app
       return self.registration.showNotification(d.title || 'Presenze & Ticket Pro', {
         body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png',
-        tag: d.tag || undefined, renotify: !!d.tag, data: { url: d.url || './' }
+        tag: d.tag || 'presenze', renotify: true, requireInteraction: true, silent: false,
+        vibrate: [400, 150, 400, 150, 800], timestamp: Date.now(), data: { url: d.url || './' }
       });
     })
   );
