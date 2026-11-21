@@ -5,6 +5,7 @@ Web app per timbrature, permessi/ferie, ticket e report mensili, con ruoli Propr
 ## Contenuto
 - `index.html`, `config.js`, `manifest.webmanifest`, `sw.js`, icone: l'app (installabile come PWA)
 - `supabase/setup.sql`: database, regole di accesso e notifiche (da incollare in Supabase → SQL Editor)
+- `supabase/step1-timbrature.sql`: solo l'aggiornamento "timbrature affidabili" (ora del server, orari a mano segnalati con ✏️, storico modifiche). Già incluso in `setup.sql`: serve per aggiornare un database esistente senza rieseguire tutto.
 - `supabase/functions/invite-user/index.ts`: funzione per gli inviti (Supabase → Edge Functions, nome `invite-user`)
 
 ## Configurazione
