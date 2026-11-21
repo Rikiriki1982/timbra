@@ -88,12 +88,22 @@ Deno.serve(async (req) => {
     if (role === 'admin' && me.role !== 'super') return json({ error: 'Solo il Proprietario può invitare un Admin' }, 403)
     const redirectTo = String(b.redirectTo ?? '')
 
-    // utente già presente: nuovo link per impostare/reimpostare la password
-    const { data: ex } = await admin.from('profiles').select('id,role').eq('email', email).maybeSingle()
+    // utente già presente: nuovo accesso per impostare/reimpostare la password
+    const { data: ex } = await admin.from('profiles').select('id,role,joined').eq('email', email).maybeSingle()
     if (ex) {
       if (me.role === 'admin' && ex.role !== 'user') return json({ error: 'Permesso negato' }, 403)
+      // Non ha ancora fatto il primo accesso: è ancora un invito, il link si può girare come prima.
+      // Ha già fatto l'accesso: un Admin non vede il link (potrebbe entrare al posto della persona),
+      // la persona riceve un'email. Solo il Proprietario può ancora ottenere il link da girare.
+      if (ex.joined && me.role !== 'super') {
+        const { error } = await caller.auth.resetPasswordForEmail(email, { redirectTo })
+        if (error) return json({ error: 'Email non inviata (' + error.message + '). Chiedi al Proprietario di generare il link.' }, 400)
+        await admin.from('notifications').insert({ kind: 'info', from_user: user.id, to_user: ex.id, message: 'Ti abbiamo inviato un\'email per reimpostare la password.' })
+        return json({ ok: true, existing: true, sent: true })
+      }
       const { data, error } = await admin.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } })
       if (error) return json({ error: error.message }, 400)
+      if (ex.joined) await admin.from('notifications').insert({ kind: 'info', from_user: user.id, to_user: ex.id, message: 'Il Proprietario ha generato un link per reimpostare la tua password. Se non l\'hai chiesto tu, avvisalo.' })
       return json({ ok: true, existing: true, link: data.properties.action_link })
     }
 
@@ -113,7 +123,7 @@ Deno.serve(async (req) => {
 
     // profilo già configurato con ruolo e permessi scelti
     const { error: pe } = await admin.from('profiles').upsert({
-      id, email, name, role,
+      id, email, name, role, active: true,
       can_punch: b.canPunch !== false,
       can_edit_past: b.canEditPast === true,
       can_request: b.canRequest !== false,

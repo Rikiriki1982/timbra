@@ -119,7 +119,11 @@ async function start(store){
   if(e1||!me||me.active===false||!['admin','super'].includes(me.role))return gate('Area riservata','I preventivi sono visibili solo al Proprietario e agli Admin.',true);
   gate('Carico i preventivi…','Un attimo.',false);
   const all=async coll=>{const out=[];for(let from=0;;from+=1000){const {data,error}=await sb.from('docs').select('id,data').eq('coll',coll).range(from,from+999);if(error)throw error;out.push(...data);if(data.length<1000)break}return out};
-  try{const [p,q]=await Promise.all([all('prev'),all('prevq')]);$('#gate')?.remove();await start(remoteStore(sb,uid,p,q))}
+  try{const [p,q]=await Promise.all([all('prev'),all('prevq')]);
+    /* ditta nuova: i dati dei preventivi partono da quelli inseriti nelle Impostazioni ditta dell'app */
+    if(!p.some(d=>d.id==='azienda')){const r=await sb.from('docs').select('data').eq('coll','settings').eq('id','company').maybeSingle();const c=r.data&&r.data.data;
+      if(c&&c.name)window.PREV_AZ_DEFAULT={nome:c.name,ragione:c.name,logo:c.logo||'',sede:String(c.head||'').split(/\n|;/)[0].trim()}}
+    $('#gate')?.remove();await start(remoteStore(sb,uid,p,q))}
   catch(e){gate('Non riesco a caricare i dati','Controlla la connessione e riprova. ('+(e.message||e)+')',true)}
 })();
 })();

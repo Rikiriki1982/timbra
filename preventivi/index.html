@@ -147,7 +147,7 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
 .lm table.cn tr.fin td{font-size:10pt}.lm table.cn .tl2{background:var(--lm-col,#a4c2f4);font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .lm table.cn .ta2{color:#e00000;font-weight:700;text-align:center;text-decoration:underline;white-space:nowrap}
 .lm .cnote{display:flex;gap:10mm;margin-top:7mm;font-size:9pt;font-weight:700}
-/* ---------- Modello "Tabella" (stile Lumia) ---------- */
+/* ---------- Modello "Tabella" ---------- */
 .lm{font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:#000}
 .lm .lh{display:flex;justify-content:space-between;align-items:flex-start;gap:8mm}
 .lm .lh img{max-width:62mm;max-height:32mm;object-fit:contain}
@@ -233,7 +233,7 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
      <div class="full" style="display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)"><span>Stato del preventivo</span><div class="stato-bar"><select id="q_stato" class="inp" style="width:auto"><option value="bozza">📝 Bozza</option><option value="inviato">📤 Inviato</option><option value="accettato">✅ Accettato</option><option value="rifiutato">❌ Rifiutato</option></select><span id="statoInfo" class="muted" style="font-size:12.5px"></span><span class="sp" style="flex:1"></span><button class="btn small" id="bTicket" type="button" hidden>🎫 Crea ticket</button></div></div>
      <label class="f full">Oggetto del preventivo<textarea id="q_oggetto" rows="2"></textarea></label>
      <label class="f full only-lavoro">Titolo della tabella<input id="q_titoloTab" placeholder="es. PREVENTIVO ESTENSIONE TVCC"></label>
-     <label class="f only-lavoro">Modello documento<select id="q_layout"><option value="lumia">Tabella Lumia</option><option value="classico">Classico</option></select></label>
+     <label class="f only-lavoro">Modello documento<select id="q_layout"><option value="lumia">Tabella</option><option value="classico">Classico</option></select></label>
      <label class="chk only-lavoro" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="q_dataTab"> Data nella prima riga della tabella</label>
     </div>
    </div>
@@ -377,7 +377,7 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
     </div>
    </div>
    <label class="f full">Nome ditta (intestazione e app)<input id="a_nome"></label>
-   <label class="f full">Denominazione completa (piè di pagina)<input id="a_ragione" placeholder="es. Lumia Network SRL"></label>
+   <label class="f full">Denominazione completa (piè di pagina)<input id="a_ragione" placeholder="es. Rossi Impianti SRL"></label>
    <label class="f">Partita IVA<input id="a_piva"></label>
    <label class="f">Codice fiscale<input id="a_cf"></label>
    <label class="f">Capitale sociale<input id="a_capsoc" placeholder="es. IV 10 000,00 €"></label>
@@ -392,6 +392,7 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
    <label class="f">Formato numero<select id="a_formato"><option value="n">Solo numero (es. 130)</option><option value="anno">Numero/anno (es. 130/2026)</option></select></label>
    <label class="f">Prefisso numerazione<input id="a_pref" placeholder="facoltativo, es. PR"></label>
    <label class="f">Prossimo numero<input id="a_next" type="number" min="1"></label>
+   <label class="f full">Listino fornitori incluso (Ubiquiti, MikroTik, Yealink, Fanvil, Tenda)<select id="a_forn"><option value="no">No, uso solo i miei prodotti</option><option value="si">Sì, aggiungilo al mio listino</option></select></label>
    <label class="f full">Testo libero extra in fondo (facoltativo)<textarea id="a_foot" rows="2"></textarea></label>
    <label class="f full">Nota predefinita sotto la tabella<textarea id="a_note" rows="2" placeholder="Compare in ogni nuovo preventivo sotto la tabella"></textarea></label>
    <label class="f full">Condizioni generali predefinite<textarea id="a_cond" rows="3"></textarea></label>
