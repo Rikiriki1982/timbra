@@ -229,6 +229,15 @@ create policy docs_upd_assigned on public.docs for update to authenticated
   using (coll = 'tix' and public.my_role() is not null and coalesce(data->'assignees' ? auth.uid()::text, false))
   with check (coll = 'tix' and public.my_role() is not null and coalesce(data->'assignees' ? auth.uid()::text, false));
 
+-- regole di arrotondamento e tipi di permesso (settings/rules): le salvano anche gli Admin
+drop policy if exists docs_rules_ins on public.docs;
+create policy docs_rules_ins on public.docs for insert to authenticated
+  with check (coll = 'settings' and id = 'rules' and public.my_role() in ('admin','super'));
+drop policy if exists docs_rules_upd on public.docs;
+create policy docs_rules_upd on public.docs for update to authenticated
+  using (coll = 'settings' and id = 'rules' and public.my_role() in ('admin','super'))
+  with check (coll = 'settings' and id = 'rules' and public.my_role() in ('admin','super'));
+
 -- notifiche: Proprietario/Admin leggono quelle per loro, ognuno le proprie
 drop policy if exists notif_read on public.notifications;
 create policy notif_read on public.notifications for select to authenticated
@@ -475,13 +484,21 @@ end $$;
 drop trigger if exists notifications_push on public.notifications;
 create trigger notifications_push after insert on public.notifications for each row execute function public.notifications_push();
 
+-- permesso "a ore": ha orario di inizio e fine e non è a giornata intera
+create or replace function public.req_hourly(q jsonb) returns boolean
+language sql immutable as $$
+  select coalesce(q->>'type', '') = 'permesso' and coalesce(q->>'full', '') <> 'true'
+     and coalesce(q->>'hin', '') ~ '^\d{1,2}:\d{2}$' and coalesce(q->>'hout', '') ~ '^\d{1,2}:\d{2}$'
+$$;
+
 -- promemoria a orario: orario del singolo dipendente (o della ditta), niente nei festivi e nei giorni di riposo,
--- niente se c'è una ferie/permesso/malattia approvata o in attesa che copre oggi
+-- niente se c'è una ferie/permesso a giornata/malattia approvata o in attesa che copre oggi;
+-- con un permesso a ore approvato l'entrata o l'uscita si spostano
 create or replace function public.push_due(p_now timestamptz default now())
 returns table(user_id uuid, title text, body text, tag text)
 language plpgsql security definer set search_path = public as $$
 declare cfg jsonb; tz text; l timestamp; d date; m int; tin int; tout int; dow int; fest boolean;
-        r record; t record; day jsonb; sc jsonb; cov boolean; n int; due timestamptz; rem int; who uuid;
+        r record; t record; day jsonb; sc jsonb; cov boolean; n int; due timestamptz; rem int; who uuid; hp jsonb;
 begin
   select data into cfg from docs where coll = 'settings' and id = 'company';
   tz := coalesce(nullif(cfg->>'tz', ''), 'Europe/Rome');
@@ -504,8 +521,17 @@ begin
       select data into day from docs where coll = 'days' and id = r.id::text || '_' || d::text;
       select exists (select 1 from docs q where q.coll = 'reqs' and q.data->>'uid' = r.id::text and q.data->>'status' in ('approved', 'pending')
                        and coalesce(q.data->>'type', '') <> 'modifica' and q.data->>'from' <= d::text
-                       and coalesce(q.data->>'to', q.data->>'from') >= d::text) into cov;
+                       and coalesce(q.data->>'to', q.data->>'from') >= d::text
+                       and not public.req_hourly(q.data)) into cov;
       if cov then continue; end if;
+      -- permesso a ore approvato oggi: sposta l'entrata (permesso a inizio giornata) o l'uscita (a fine giornata)
+      select q.data into hp from docs q where q.coll = 'reqs' and q.data->>'uid' = r.id::text and q.data->>'status' = 'approved'
+         and public.req_hourly(q.data) and q.data->>'from' <= d::text and coalesce(q.data->>'to', q.data->>'from') >= d::text limit 1;
+      if hp is not null then
+        if public.hhmm_min(hp->>'hin', 0) <= tin then tin := public.hhmm_min(hp->>'hout', tin);
+        elsif public.hhmm_min(hp->>'hout', 1440) >= tout then tout := public.hhmm_min(hp->>'hin', tout);
+        end if;
+      end if;
       if m >= tin and m < tout and coalesce(day->>'in', '') = '' and coalesce(day->>'off', '') in ('', 'false') then
         insert into push_log(key) values ('in:' || r.id || ':' || d) on conflict do nothing;
         get diagnostics n = row_count;
@@ -514,7 +540,7 @@ begin
       if m >= tout and coalesce(day->>'in', '') <> '' and coalesce(day->>'out', '') = '' then
         insert into push_log(key) values ('out:' || r.id || ':' || d) on conflict do nothing;
         get diagnostics n = row_count;
-        if n = 1 then user_id := r.id; title := 'Timbra l''uscita'; body := 'Sono le ' || to_char(make_time(tout / 60, tout % 60, 0), 'HH24:MI') || ': ricordati di timbrare l''uscita.'; tag := 'out'; return next; end if;
+        if n = 1 then user_id := r.id; title := 'Timbra l''uscita'; body := 'Sono le ' || to_char(make_time(tout / 60, tout % 60, 0), 'HH24:MI') || ': ricordati di timbrare l''uscita.' || case when hp is not null then ' Oggi sei in permesso dalle ' || (hp->>'hin') || ' alle ' || (hp->>'hout') || '.' else '' end; tag := 'out'; return next; end if;
       end if;
     end loop;
   end if;

@@ -98,4 +98,40 @@ update public.docs set data = data || '{"status":"Fatto","title":"cambiato"}' wh
 reset role;
 do $$ begin assert (select (data->>'status') || (data->>'title') from public.docs where id = 't1') = 'FattoRouter', 'sul ticket assegnato si cambia solo lo stato'; end $$;
 
+-- arrotondamento e tipi di permesso (settings/rules): li salvano Proprietario e Admin, i dati ditta solo il Proprietario
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false); end $$;
+set role authenticated;
+do $$ begin
+  begin
+    insert into public.docs (coll, id, data) values ('settings', 'rules', '{"rnd":{"inStep":15}}');
+    assert false, 'un dipendente non deve poter cambiare l''arrotondamento';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false); end $$;
+update public.profiles set role = 'admin', active = true where id = '00000000-0000-4000-8000-000000000003';
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', false); end $$;
+set role authenticated;
+insert into public.docs (coll, id, data) values ('settings', 'rules', '{"rnd":{"inStep":15,"inDir":"up"}}');
+update public.docs set data = '{"rnd":{"inStep":30,"inDir":"up"}}' where coll = 'settings' and id = 'rules';
+do $$ begin
+  assert (select data->'rnd'->>'inStep' from public.docs where coll = 'settings' and id = 'rules') = '30', 'l''Admin deve poter salvare l''arrotondamento';
+  begin
+    insert into public.docs (coll, id, data) values ('settings', 'company', '{"name":"altra"}');
+    assert false, 'l''Admin non deve poter cambiare i dati della ditta';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+
+-- permesso a ore approvato (dalle 16 alle 18): il promemoria di uscita arriva alle 16, non alle 18
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false); end $$;
+insert into public.docs (coll, id, data) values ('settings', 'company', '{"name":"Prova","in":"09:00","out":"18:00","pause":60}') on conflict (coll, id) do nothing;
+insert into public.push_subs (user_id, endpoint, p256dh, auth) values ('00000000-0000-4000-8000-000000000002', 'https://prova/1', 'x', 'y');
+insert into public.docs (coll, id, data) values ('reqs', 'p1', '{"uid":"00000000-0000-4000-8000-000000000002","type":"permesso","kind":"rol","from":"2026-11-17","to":"2026-11-17","hin":"16:00","hout":"18:00","hours":2,"status":"approved"}');
+insert into public.docs (coll, id, data) values ('days', '00000000-0000-4000-8000-000000000002_2026-11-17', '{"uid":"00000000-0000-4000-8000-000000000002","date":"2026-11-17","in":"09:00","out":""}');
+do $$ begin
+  assert (select count(*) from public.push_due(timestamptz '2026-11-17 15:50 Europe/Rome') where tag = 'out') = 0, 'troppo presto per il promemoria di uscita';
+  assert (select count(*) from public.push_due(timestamptz '2026-11-17 16:01 Europe/Rome') where tag = 'out') = 1, 'con il permesso dalle 16 il promemoria di uscita deve arrivare alle 16';
+end $$;
+
 select 'Tutte le prove del database sono passate' as esito;
