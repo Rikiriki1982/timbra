@@ -193,13 +193,16 @@ end $$;
 drop trigger if exists docs_notify on public.docs;
 create trigger docs_notify after insert or update on public.docs for each row execute function public.reqs_notify();
 
--- 9) NUOVI UTENTI: il primo diventa Proprietario, gli altri Utenti (poi la funzione inviti imposta ruolo e permessi)
+-- 9) NUOVI UTENTI: il primo diventa Proprietario, gli altri Utenti (poi la funzione inviti imposta ruolo e permessi).
+--    Chi si iscrive da solo senza invito nasce disattivato (vedi anche la sezione 19).
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
+declare has_owner boolean := exists (select 1 from profiles where role = 'super');
 begin
-  insert into profiles (id, email, name, role)
+  insert into profiles (id, email, name, role, active)
   values (new.id, new.email, coalesce(new.raw_user_meta_data->>'name', ''),
-          case when exists (select 1 from profiles where role = 'super') then 'user' else 'super' end)
+          case when has_owner then 'user' else 'super' end,
+          (not has_owner) or new.invited_at is not null)
   on conflict (id) do nothing;
   return new;
 end $$;
@@ -634,3 +637,271 @@ begin
 end $$;
 drop trigger if exists docs_days_log on public.docs;
 create trigger docs_days_log after insert or update or delete on public.docs for each row execute function public.days_log_write();
+
+-- 17) FESTIVITÀ, ORARIO PER DIPENDENTE, SALDO FERIE E PERMESSI (21/11/2026)
+-- Si può rieseguire senza perdere dati. Non modifica timbrature, richieste o ticket già salvati.
+--
+-- Cosa fa:
+--  a) Aggiunge ai profili la colonna hr: orario settimanale del dipendente e ore di ferie/permessi spettanti.
+--     La modificano solo Proprietario e Admin (l'Admin solo per gli Utenti); il dipendente la può leggere ma non cambiare.
+--  b) Riconosce le festività nazionali italiane (Pasqua e Pasquetta comprese) e i giorni in più
+--     scritti nelle Impostazioni ditta (Santo Patrono, chiusure aziendali).
+--  c) I promemoria di timbratura sul telefono seguono l'orario di ogni dipendente e non partono nei festivi.
+
+alter table public.profiles add column if not exists hr jsonb;
+
+-- il dipendente non può cambiarsi da solo orario e saldo ferie
+create or replace function public.profiles_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare r text := public.my_role();
+begin
+  if auth.uid() is null then return new; end if;            -- funzione inviti / dashboard
+  new.id := old.id; new.email := old.email; new.invited_by := old.invited_by;
+  new.created_at := old.created_at; new.joined := old.joined;
+  if r = 'super' then
+    if old.role = 'super' then new.role := 'super'; new.active := true; end if;   -- il Proprietario non si declassa
+    if new.role = 'super' and old.role <> 'super' then new.role := old.role; end if;
+  elsif r = 'admin' and old.id <> auth.uid() and old.role = 'user' then
+    new.role := old.role;                                   -- i ruoli li cambia solo il Proprietario
+  else
+    if r = 'admin' and old.id <> auth.uid() then raise exception 'Permesso negato'; end if;
+    new.role := old.role; new.can_punch := old.can_punch; new.can_edit_past := old.can_edit_past;
+    new.can_request := old.can_request; new.active := old.active;
+    new.hr := old.hr;                                       -- orario e ferie: li imposta chi gestisce il team
+  end if;
+  return new;
+end $$;
+
+-- data di Pasqua (calendario gregoriano)
+create or replace function public.easter_date(y int) returns date
+language plpgsql immutable as $$
+declare a int; b int; c int; d int; e int; f int; g int; h int; i int; k int; l int; m int; x int;
+begin
+  a := y % 19; b := y / 100; c := y % 100; d := b / 4; e := b % 4; f := (b + 8) / 25; g := (b - f + 1) / 3;
+  h := (19 * a + b - d - g + 15) % 30; i := c / 4; k := c % 4; l := (32 + 2 * e + 2 * i - h - k) % 7;
+  m := (a + 11 * h + 22 * l) / 451; x := h + l - 7 * m + 114;
+  return make_date(y, x / 31, x % 31 + 1);
+end $$;
+
+-- festività nazionali + giorni in più delle Impostazioni ditta ("MM-GG" ogni anno oppure "AAAA-MM-GG")
+create or replace function public.is_holiday(p_day date) returns boolean
+language sql stable security definer set search_path = public as $$
+  select to_char(p_day, 'MM-DD') in ('01-01','01-06','04-25','05-01','06-02','08-15','11-01','12-08','12-25','12-26')
+      or p_day in (public.easter_date(extract(year from p_day)::int), public.easter_date(extract(year from p_day)::int) + 1)
+      or exists (select 1 from docs s,
+                   jsonb_array_elements(case when jsonb_typeof(s.data->'hol') = 'array' then s.data->'hol' else '[]'::jsonb end) h
+                 where s.coll = 'settings' and s.id = 'company'
+                   and h->>'d' in (to_char(p_day, 'YYYY-MM-DD'), to_char(p_day, 'MM-DD')))
+$$;
+
+create or replace function public.hhmm_min(t text, def int) returns int
+language sql immutable as $$
+  select case when t ~ '^\d{1,2}:\d{2}$' then split_part(t, ':', 1)::int * 60 + split_part(t, ':', 2)::int else def end
+$$;
+
+-- promemoria a orario: orario del singolo dipendente (o della ditta), niente nei festivi e nei giorni di riposo,
+-- niente se c'è una ferie/permesso/malattia approvata o in attesa che copre oggi
+create or replace function public.push_due(p_now timestamptz default now())
+returns table(user_id uuid, title text, body text, tag text)
+language plpgsql security definer set search_path = public as $$
+declare cfg jsonb; tz text; l timestamp; d date; m int; tin int; tout int; dow int; fest boolean;
+        r record; t record; day jsonb; sc jsonb; cov boolean; n int; due timestamptz; rem int; who uuid;
+begin
+  select data into cfg from docs where coll = 'settings' and id = 'company';
+  tz := coalesce(nullif(cfg->>'tz', ''), 'Europe/Rome');
+  l := p_now at time zone tz; d := l::date; m := extract(hour from l)::int * 60 + extract(minute from l)::int;
+  dow := extract(dow from l)::int;
+  fest := public.is_holiday(d);
+
+  if not fest then
+    for r in select p.id, p.hr from profiles p where p.active and p.can_punch and exists (select 1 from push_subs s where s.user_id = p.id) loop
+      if jsonb_typeof(r.hr->'wk') = 'object' then
+        sc := r.hr->'wk'->(dow::text);
+      elsif dow between 1 and 5 then
+        sc := jsonb_build_object('in', cfg->>'in', 'out', cfg->>'out');
+      else
+        sc := null;
+      end if;
+      if sc is null or jsonb_typeof(sc) <> 'object' or coalesce(sc->>'in', '') = '' or coalesce(sc->>'out', '') = '' then continue; end if;
+      tin := public.hhmm_min(sc->>'in', 540); tout := public.hhmm_min(sc->>'out', 1080);
+
+      select data into day from docs where coll = 'days' and id = r.id::text || '_' || d::text;
+      select exists (select 1 from docs q where q.coll = 'reqs' and q.data->>'uid' = r.id::text and q.data->>'status' in ('approved', 'pending')
+                       and coalesce(q.data->>'type', '') <> 'modifica' and q.data->>'from' <= d::text
+                       and coalesce(q.data->>'to', q.data->>'from') >= d::text) into cov;
+      if cov then continue; end if;
+      if m >= tin and m < tout and coalesce(day->>'in', '') = '' and coalesce(day->>'off', '') in ('', 'false') then
+        insert into push_log(key) values ('in:' || r.id || ':' || d) on conflict do nothing;
+        get diagnostics n = row_count;
+        if n = 1 then user_id := r.id; title := 'Timbra l''entrata'; body := 'Non hai ancora timbrato l''entrata (orario ' || to_char(make_time(tin / 60, tin % 60, 0), 'HH24:MI') || ').'; tag := 'in'; return next; end if;
+      end if;
+      if m >= tout and coalesce(day->>'in', '') <> '' and coalesce(day->>'out', '') = '' then
+        insert into push_log(key) values ('out:' || r.id || ':' || d) on conflict do nothing;
+        get diagnostics n = row_count;
+        if n = 1 then user_id := r.id; title := 'Timbra l''uscita'; body := 'Sono le ' || to_char(make_time(tout / 60, tout % 60, 0), 'HH24:MI') || ': ricordati di timbrare l''uscita.'; tag := 'out'; return next; end if;
+      end if;
+    end loop;
+  end if;
+
+  -- promemoria dei ticket con data, ora e "promemoria" impostati (invariato, anche nei festivi)
+  for t in select x.id, x.data from docs x where x.coll = 'tix' and coalesce(x.data->>'status', 'Fare') <> 'Fatto'
+             and x.data->>'due' ~ '^\d{4}-\d{2}-\d{2}$' and x.data->>'time' ~ '^\d{1,2}:\d{2}$' and x.data->>'rem' ~ '^\d+$' loop
+    rem := (t.data->>'rem')::int;
+    if rem <= 0 then continue; end if;
+    due := ((t.data->>'due') || ' ' || (t.data->>'time'))::timestamp at time zone tz;
+    if p_now >= due - rem * interval '1 minute' and p_now < due + interval '30 minutes' then
+      insert into push_log(key) values ('tix:' || t.id || ':' || rem) on conflict do nothing;
+      get diagnostics n = row_count;
+      if n = 1 then
+        for who in select distinct v::uuid from (select t.data->>'uid' as v union select jsonb_array_elements_text(case when jsonb_typeof(t.data->'assignees') = 'array' then t.data->'assignees' else '[]'::jsonb end)) z
+                    where v ~ '^[0-9a-f-]{36}$' loop
+          user_id := who; title := 'Ticket in scadenza'; body := coalesce(t.data->>'title', '') || ' · ' || (t.data->>'due') || ' ' || (t.data->>'time'); tag := 'tix' || t.id; return next;
+        end loop;
+      end if;
+    end if;
+  end loop;
+end $$;
+revoke execute on function public.push_due(timestamptz) from public, anon, authenticated;
+
+-- 18) PREVENTIVI: storico delle modifiche (21/11/2026)
+-- Si può rieseguire senza perdere dati. Non modifica i preventivi già salvati.
+--
+-- Cosa fa:
+--  Ogni creazione, modifica o cancellazione di un preventivo, del listino, dell'anagrafica clienti
+--  o dei dati azienda finisce in public.prev_log: quando, chi, e cosa è cambiato.
+--  Per risparmiare spazio (piano gratuito) si salva solo la differenza, senza le immagini.
+--  Le bozze di lavoro (salvate di continuo mentre si scrive) non vengono registrate.
+--  Il registro è leggibile solo da Proprietario e Admin e nessuno può modificarlo dall'app.
+
+create table if not exists public.prev_log (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  coll text not null,            -- prevq = preventivo, prev = listino / clienti / azienda
+  doc_id text not null,
+  by_user uuid,                  -- chi ha fatto la modifica (vuoto = sistema / pannello Supabase)
+  action text not null check (action in ('insert','update','delete')),
+  info jsonb,                    -- numero, cliente e oggetto del preventivo (per mostrarlo anche se poi viene cancellato)
+  changes jsonb                  -- solo ciò che è cambiato
+);
+create index if not exists prev_log_doc on public.prev_log (coll, doc_id, at desc);
+create index if not exists prev_log_at on public.prev_log (at desc);
+alter table public.prev_log enable row level security;
+drop policy if exists prev_log_read on public.prev_log;
+create policy prev_log_read on public.prev_log for select to authenticated
+  using (public.my_role() in ('admin','super'));
+
+-- toglie le immagini (spesso molto grandi) prima di salvarle nel registro
+create or replace function public.prev_strip(x jsonb) returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare r jsonb; k text; v jsonb;
+begin
+  if x is null then return null; end if;
+  case jsonb_typeof(x)
+    when 'object' then
+      r := '{}'::jsonb;
+      for k, v in select * from jsonb_each(x) loop
+        if k in ('img', 'logo', 'photo') and jsonb_typeof(v) = 'string' and v #>> '{}' <> '' then
+          r := r || jsonb_build_object(k, '[immagine]');
+        else
+          r := r || jsonb_build_object(k, public.prev_strip(v));
+        end if;
+      end loop;
+      return r;
+    when 'array' then
+      return coalesce((select jsonb_agg(public.prev_strip(e) order by i) from jsonb_array_elements(x) with ordinality t(e, i)), '[]'::jsonb);
+    when 'string' then
+      if left(x #>> '{}', 5) = 'data:' then return '"[immagine]"'::jsonb; end if;
+      return x;
+    else return x;
+  end case;
+end $$;
+
+-- chiave di una voce di elenco: id (righe, listino) oppure nome (clienti)
+create or replace function public.prev_key(e jsonb) returns text
+language sql immutable as $$
+  select case when jsonb_typeof(e) = 'object' then coalesce(e->>'id', nullif(lower(trim(e->>'nome')), '')) end
+$$;
+
+-- differenza tra due valori:
+--   {"~": [prima, dopo]}                    valore cambiato
+--   {"#": [{"k":..., "from":..., "to":...}]} elenco: voci aggiunte (from null), tolte (to null) o cambiate
+--   {campo: differenza, ...}                 oggetto: solo i campi cambiati
+create or replace function public.prev_diff(o jsonb, n jsonb) returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare r jsonb := '{}'::jsonb; k text; d jsonb; items jsonb := '[]'::jsonb; e jsonb; f jsonb;
+begin
+  if o is not distinct from n then return null; end if;
+  if jsonb_typeof(o) = 'object' and jsonb_typeof(n) = 'object' then
+    for k in select jsonb_object_keys(o) union select jsonb_object_keys(n) loop
+      d := public.prev_diff(o->k, n->k);
+      if d is not null then r := r || jsonb_build_object(k, d); end if;
+    end loop;
+    return nullif(r, '{}'::jsonb);
+  end if;
+  if jsonb_typeof(o) = 'array' and jsonb_typeof(n) = 'array'
+     and not exists (select 1 from jsonb_array_elements(o || n) x where public.prev_key(x) is null) then
+    for e in select x from jsonb_array_elements(n) x loop                       -- aggiunte e modifiche
+      f := (select x from jsonb_array_elements(o) x where public.prev_key(x) = public.prev_key(e) limit 1);
+      if f is null then
+        items := items || jsonb_build_array(jsonb_build_object('k', public.prev_key(e), 'from', null, 'to', public.prev_strip(e)));
+      elsif f <> e then
+        items := items || jsonb_build_array(jsonb_build_object('k', public.prev_key(e), 'from', public.prev_strip(f), 'to', public.prev_strip(e)));
+      end if;
+    end loop;
+    for e in select x from jsonb_array_elements(o) x loop                       -- voci tolte
+      if not exists (select 1 from jsonb_array_elements(n) x where public.prev_key(x) = public.prev_key(e)) then
+        items := items || jsonb_build_array(jsonb_build_object('k', public.prev_key(e), 'from', public.prev_strip(e), 'to', null));
+      end if;
+    end loop;
+    if jsonb_array_length(items) = 0 then
+      return jsonb_build_object('~', jsonb_build_array('ordine', 'ordine'));   -- stesse voci, ordine diverso
+    end if;
+    return jsonb_build_object('#', items);
+  end if;
+  return jsonb_build_object('~', jsonb_build_array(public.prev_strip(o), public.prev_strip(n)));
+end $$;
+
+create or replace function public.prev_log_write() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare r public.docs; ch jsonb; inf jsonb;
+begin
+  if tg_op = 'DELETE' then r := old; else r := new; end if;
+  if r.coll not in ('prev', 'prevq') then return null; end if;
+  if r.coll = 'prev' and r.id not in ('listino', 'clienti', 'azienda') then return null; end if;   -- bozze: no
+  if tg_op = 'UPDATE' and old.data = new.data then return null; end if;
+  if r.coll = 'prevq' then
+    inf := jsonb_build_object('numero', r.data->>'numero', 'cliente', r.data#>>'{cliente,nome}', 'oggetto', left(r.data->>'oggetto', 120));
+  end if;
+  ch := case tg_op
+    when 'UPDATE' then public.prev_diff(old.data - 'aggiornato', new.data - 'aggiornato')
+    when 'INSERT' then case when r.coll = 'prevq' then public.prev_strip(new.data) end
+    else public.prev_strip(old.data) end;                    -- cancellazione: resta una copia (senza immagini)
+  if tg_op = 'UPDATE' and ch is null then return null; end if;   -- è cambiata solo l'ora di salvataggio
+  insert into prev_log (coll, doc_id, by_user, action, info, changes)
+  values (r.coll, r.id, auth.uid(), lower(tg_op), inf, ch);
+  return null;
+end $$;
+drop trigger if exists docs_prev_log on public.docs;
+create trigger docs_prev_log after insert or update or delete on public.docs for each row execute function public.prev_log_write();
+
+-- 19) ISCRIZIONI SOLO SU INVITO (21/11/2026)
+-- Si può rieseguire senza perdere dati. Non tocca utenti, timbrature, ferie, ticket o preventivi già salvati.
+--
+-- Cosa fa:
+--  Il primo account creato in un database nuovo diventa il Proprietario (come prima).
+--  Dopo, entra solo chi è stato invitato da Proprietario o Admin. Se qualcuno riuscisse a crearsi
+--  un account da solo (iscrizioni libere lasciate accese in Supabase), il suo profilo nasce DISATTIVATO:
+--  non vede nulla finché Proprietario o Admin non lo riattivano dal Team.
+create or replace function public.handle_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare has_owner boolean := exists (select 1 from profiles where role = 'super');
+begin
+  insert into profiles (id, email, name, role, active)
+  values (new.id, new.email, coalesce(new.raw_user_meta_data->>'name', ''),
+          case when has_owner then 'user' else 'super' end,
+          (not has_owner) or new.invited_at is not null)
+  on conflict (id) do nothing;
+  return new;
+end $$;
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();

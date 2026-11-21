@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Nuova ditta · Timbra</title>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#18212b;--mu:#5b6675;--bd:#d6dbe2;--ac:#4f46e5;--ok:#0f7b3f}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1320;--card:#171e2e;--ink:#e8ecf3;--mu:#9aa5b5;--bd:#2a3347;--ac:#8b85ff;--ok:#4cc38a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.5rem;margin:8px 0 4px}h2{font-size:1.1rem;margin:0 0 8px}
+p{margin:6px 0}.mu{color:var(--mu);font-size:.93rem}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin:14px 0}
+label{display:block;font-weight:600;margin:10px 0 4px}
+input,textarea{width:100%;font:inherit;padding:9px 11px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--ink)}
+textarea{font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;min-height:90px}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:10px 16px;background:var(--ac);color:#fff;cursor:pointer}
+button.gh{background:transparent;color:var(--ac);border:1px solid var(--bd);padding:6px 12px;font-size:.9rem}
+ol{padding-left:22px}li{margin:6px 0}
+a{color:var(--ac)}
+.err{color:#c62828;font-weight:600}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:12px}
+#out{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>Attiva una nuova ditta</h1>
+<p class="mu">Questa pagina prepara i pezzi da copiare per collegare un nuovo cliente a Timbra. Non salva nulla e non invia nulla: tutto resta in questa pagina.</p>
+
+<div class="card">
+<h2>1. Dati del cliente</h2>
+<p class="mu">Prima crea il progetto Supabase del cliente (vedi la guida). Poi copia qui Project URL e chiave <b>anon</b> da Supabase → Project Settings → API.</p>
+<label for="code">Codice della ditta (breve, senza spazi)</label>
+<input id="code" placeholder="es. rossi" autocomplete="off">
+<label for="url">Project URL</label>
+<input id="url" placeholder="https://abcdefgh.supabase.co" autocomplete="off">
+<label for="key">Chiave anon (public)</label>
+<input id="key" placeholder="eyJhbGciOi…" autocomplete="off">
+<p id="msg" class="err"></p>
+<button id="go">Prepara</button>
+</div>
+
+<div id="out">
+<div class="card">
+<h2>2. SQL per le notifiche</h2>
+<p class="mu">Dopo aver incollato ed eseguito <b>supabase/setup.sql</b>, incolla anche questo nell'SQL Editor del cliente e premi Run. Contiene una chiave privata: non mandarla a nessuno e non salvarla nel codice.</p>
+<textarea id="sql" readonly rows="9"></textarea>
+<div class="row"><a id="sqlLink" target="_blank" rel="noopener">Apri l'SQL Editor del cliente</a><button class="gh" data-copy="sql">Copia</button></div>
+</div>
+
+<div class="card">
+<h2>3. Riga da aggiungere a config.js</h2>
+<p class="mu">Su GitHub apri <b>config.js</b>, matita ✏️, incolla questa riga sotto quella di <i>lumia</i> e salva (Commit changes).</p>
+<textarea id="cfg" readonly rows="3"></textarea>
+<div class="row"><span></span><button class="gh" data-copy="cfg">Copia</button></div>
+</div>
+
+<div class="card">
+<h2>4. Link personale del cliente</h2>
+<p class="mu">È l'indirizzo che userà il cliente. Mettilo anche in Supabase → Authentication → URL Configuration: in <b>Site URL</b> e in <b>Redirect URLs</b>.</p>
+<textarea id="link" readonly rows="2"></textarea>
+<div class="row"><a id="authLink" target="_blank" rel="noopener">Apri URL Configuration del cliente</a><button class="gh" data-copy="link">Copia</button></div>
+</div>
+
+<div class="card">
+<h2>5. Ultimi controlli</h2>
+<ol id="todo"></ol>
+</div>
+</div>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const q=s=>"'"+String(s).replace(/'/g,"''")+"'";
+document.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{const t=$(b.dataset.copy);t.select();try{navigator.clipboard.writeText(t.value)}catch(e){document.execCommand("copy")}b.textContent="Copiato ✓";setTimeout(()=>b.textContent="Copia",1500)});
+$("go").onclick=async()=>{
+  const code=$("code").value.trim().toLowerCase(),url=$("url").value.trim().replace(/\/+$/,""),key=$("key").value.trim(),msg=$("msg");msg.textContent="";
+  if(!/^[a-z0-9-]{2,30}$/.test(code))return msg.textContent="Il codice può avere solo lettere minuscole, numeri e trattini (es. rossi).";
+  const m=url.match(/^https:\/\/([a-z0-9]+)\.supabase\.co$/i);if(!m)return msg.textContent="Il Project URL deve essere tipo https://abcdefgh.supabase.co";
+  if(!/^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(key)&&!/^sb_publishable_\w+$/.test(key))return msg.textContent="La chiave non sembra quella anon/public. Non usare mai la chiave service_role.";
+  try{const p=JSON.parse(atob(key.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));if(p.role&&p.role!=="anon")return msg.textContent="Questa è la chiave "+p.role+": serve quella anon (public)."}catch(e){}
+  const ref=m[1];
+  let pub,priv;
+  try{const k=await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign","verify"]);
+    pub=b64u(await crypto.subtle.exportKey("raw",k.publicKey));priv=(await crypto.subtle.exportKey("jwk",k.privateKey)).d}
+  catch(e){return msg.textContent="Il browser non riesce a creare le chiavi: usa Chrome, Edge o Safari aggiornati."}
+  const secret=b64u(crypto.getRandomValues(new Uint8Array(24)));
+  $("sql").value="-- Notifiche push di "+code+" (da eseguire una volta sola, dopo setup.sql)\n"+
+    "insert into public.push_config(k, v) values\n  ('fn_url', "+q(url+"/functions/v1/send-push")+"),\n  ('vapid_public', "+q(pub)+"),\n  ('vapid_private', "+q(priv)+"),\n  ('secret', "+q(secret)+")\non conflict (k) do update set v = excluded.v;";
+  $("cfg").value="  "+code+":{url:"+JSON.stringify(url)+",vapid:"+JSON.stringify(pub)+",key:"+JSON.stringify(key)+"},";
+  const base=location.origin+location.pathname.replace(/installa\/(index\.html)?$/,"");
+  $("link").value=base+"?ditta="+code;
+  $("sqlLink").href="https://supabase.com/dashboard/project/"+ref+"/sql/new";
+  $("authLink").href="https://supabase.com/dashboard/project/"+ref+"/auth/url-configuration";
+  const d="https://supabase.com/dashboard/project/"+ref;
+  $("todo").innerHTML=[
+    'Iscrizioni libere <b>spente</b>: <a target="_blank" rel="noopener" href="'+d+'/auth/providers">Authentication → Sign In / Providers</a> → togli «Allow new users to sign up».',
+    'Funzioni caricate (<a target="_blank" rel="noopener" href="'+d+'/functions">Edge Functions</a>): <b>invite-user</b> e <b>send-push</b> (con «Verify JWT» spento per send-push). Facoltative: transcribe, cerca-azienda.',
+    'Primo account (diventa il Proprietario): <a target="_blank" rel="noopener" href="'+d+'/auth/users">Authentication → Users</a> → Add user → Create new user, con l\'email del titolare e «Auto Confirm» attivo.',
+    'Il titolare apre il link personale, accede e compila «Benvenuto! Imposta la tua ditta».'
+  ].map(x=>"<li>"+x+"</li>").join("");
+  $("out").style.display="block";$("out").scrollIntoView({behavior:"smooth"});
+};
+</script>
+</body>
+</html>
