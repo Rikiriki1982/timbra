@@ -1,5 +1,6 @@
 # Controlli automatici: a ogni modifica GitHub apre l'app in un browser di prova
 # (con un database finto, mai quello vero) e verifica che le funzioni principali vadano.
+# Prova anche supabase/setup.sql su un PostgreSQL vuoto (mai sul database vero).
 name: Controlli automatici
 on:
   push:
@@ -31,3 +32,23 @@ jobs:
           name: rapporto-controlli
           path: tests/playwright-report
           retention-days: 14
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: prova
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: prova
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash tests/db/prova-database.sh
