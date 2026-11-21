@@ -19,24 +19,78 @@ function localStore(){return{
 }}
 
 /* archivio: un documento per preventivo (collezione prevq); il resto in prev: azienda, listino, clienti, bozza di ognuno */
+/* unione a tre vie: le modifiche fatte qui (rispetto a "base", l'ultima versione letta dal database)
+   vengono applicate sopra la versione attuale del database ("remote"), voce per voce.
+   Elenchi (listino, clienti): voce = id oppure nome. Oggetti (azienda): campo per campo. */
+const J=x=>JSON.stringify(x),cp=x=>x==null?x:JSON.parse(J(x));
+function keyOf(e){return e&&typeof e==='object'?(e.id!=null?String(e.id):String(e.nome||'').trim().toLowerCase()||null):null}
+function merge3(base,local,remote,conf){
+  if(J(local)===J(base))return cp(remote);
+  if(J(remote)===J(base)||J(remote)===J(local))return cp(local);
+  if(Array.isArray(local)&&Array.isArray(remote)&&Array.isArray(base||[])){
+    const B=new Map(),L=new Map();(base||[]).forEach(e=>B.set(keyOf(e),e));local.forEach(e=>L.set(keyOf(e),e));
+    if([...B.keys(),...L.keys(),...remote.map(keyOf)].some(k=>k==null)){conf.push('');return cp(local)}
+    const out=[],seen=new Set();
+    remote.forEach(r=>{const k=keyOf(r);seen.add(k);const b=B.get(k),l=L.get(k);
+      if(b!==undefined&&l===undefined){if(J(r)!==J(b))conf.push(k);else return}                 // tolta qui
+      if(l!==undefined&&b!==undefined&&J(l)!==J(b)){if(J(r)!==J(b)&&J(r)!==J(l))conf.push(k);out.push(cp(l));return}  // cambiata qui
+      if(l!==undefined&&b===undefined){if(J(r)!==J(l))conf.push(k);out.push(cp(l));return}       // aggiunta qui e anche là
+      out.push(cp(r))});
+    local.forEach(l=>{const k=keyOf(l);if(seen.has(k))return;if(!B.has(k))out.push(cp(l));else if(J(l)!==J(B.get(k)))conf.push(k)});   // tolta là ma cambiata qui: resta tolta               // aggiunta solo qui
+    return out}
+  if(local&&remote&&typeof local==='object'&&typeof remote==='object'&&!Array.isArray(local)&&!Array.isArray(remote)){
+    const b=base&&typeof base==='object'?base:{},out=cp(remote);
+    new Set([...Object.keys(b),...Object.keys(local)]).forEach(k=>{
+      if(J(local[k])===J(b[k]))return;
+      if(k==='next'&&+remote[k]>+local[k])return;                                                    // numerazione: vince il numero più alto
+      if(J(remote[k])!==J(b[k])&&J(remote[k])!==J(local[k])&&k!=='next')conf.push(k);
+      if(local[k]===undefined)delete out[k];else out[k]=cp(local[k])});
+    return out}
+  conf.push('');return cp(local);
+}
+window.PREV_MERGE3=merge3;
+
 function remoteStore(sb,uid,prev,quotes){
-  const SINGLE=['azienda','listino','listinoFornVer','clienti'],C={},T={},sig={};
-  prev.forEach(d=>{const v=d.data&&d.data.v;if(d.id==='bozza_'+uid)C.bozza=v;else if(SINGLE.includes(d.id))C[d.id]=v});
+  const SINGLE=['azienda','listino','listinoFornVer','clienti'],MERGE=['azienda','listino','clienti'],C={},T={},sig={},BASE={},P=new Set(),F=new Set();
+  prev.forEach(d=>{const v=d.data&&d.data.v;if(d.id==='bozza_'+uid)C.bozza=v;else if(SINGLE.includes(d.id)){C[d.id]=v;BASE[d.id]=J(v)}});
   const arch=quotes.map(d=>d.data).filter(Boolean).sort((a,b)=>String(b.aggiornato||b.data||'').localeCompare(String(a.aggiornato||a.data||'')));
   arch.forEach(a=>sig[a.id]=JSON.stringify(a));C.archivio=arch;
   let busy=0;
   const upd=()=>status(busy?'☁️ Salvataggio…':'☁️ Salvato'),
-  run=(key,fn,wait)=>{clearTimeout(T[key]);busy++;upd();T[key]=setTimeout(async()=>{try{await fn();busy--;upd()}catch(e){busy--;upd();status('⚠️ Non salvato');note('Salvataggio non riuscito: '+(e.message||e)+'. Riprovo tra poco.');delete sig['!'+key];setTimeout(()=>retry(key),5000)}},wait)},
+  run=(key,fn,wait)=>{if(P.has(key))clearTimeout(T[key]);else{P.add(key);busy++}upd();T[key]=setTimeout(async()=>{P.delete(key);F.add(key);try{await fn();F.delete(key);busy--;upd()}catch(e){F.delete(key);busy--;upd();status('⚠️ Non salvato');note('Salvataggio non riuscito: '+(e.message||e)+'. Riprovo tra poco.');delete sig['!'+key];setTimeout(()=>retry(key),5000)}},wait)},
   put=async(coll,id,data)=>{const r=await sb.from('docs').upsert({coll,id,data});if(r.error)throw r.error},
   del=async(coll,id)=>{const r=await sb.from('docs').delete().eq('coll',coll).eq('id',id);if(r.error)throw r.error},
   retry=k=>{if(k.startsWith('q:')){const id=k.slice(2),a=C.archivio.find(x=>x.id===id);delete sig[id];a?saveQ(a):delQ(id)}else saveK(k)},
-  saveK=k=>run(k,()=>put('prev',k==='bozza'?'bozza_'+uid:k,{v:C[k]}),k==='bozza'?900:500),
+  /* listino, clienti, azienda: prima di salvare rilegge il database e unisce le modifiche di altri admin */
+  saveMerged=async k=>{
+    const mine=J(C[k]);if(BASE[k]===mine)return;
+    const r=await sb.from('docs').select('data').eq('coll','prev').eq('id',k).maybeSingle();if(r.error)throw r.error;
+    const remote=r.data&&r.data.data?r.data.data.v:undefined,rj=J(remote);let val=JSON.parse(mine),conf=[];
+    if(rj!==undefined&&BASE[k]!==undefined&&rj!==BASE[k]&&rj!==mine)val=merge3(JSON.parse(BASE[k]),val,remote,conf);
+    await put('prev',k,{v:val});
+    const vj=J(val);
+    if(J(C[k])!==mine){const later=[];C[k]=merge3(JSON.parse(mine),C[k],val,later);setTimeout(()=>saveK(k),0)}   // modificato di nuovo nel frattempo
+    else C[k]=JSON.parse(vj);
+    BASE[k]=vj;
+    if(vj!==mine&&typeof window.PREV_ON_REMOTE==='function')window.PREV_ON_REMOTE(k,C[k],conf);
+  },
+  saveK=k=>run(k,()=>MERGE.includes(k)?saveMerged(k):put('prev',k==='bozza'?'bozza_'+uid:k,{v:C[k]}),k==='bozza'?900:500),
   saveQ=a=>{const s=JSON.stringify(a);if(sig[a.id]===s)return;sig[a.id]=s;run('q:'+a.id,()=>put('prevq',a.id,JSON.parse(s)),300)},
   delQ=id=>{delete sig[id];run('q:'+id,()=>del('prevq',id),100)};
 
   addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue=''}});
   status('☁️ Salvato');
   return{
+    sb,uid,remote:true,
+    /* rilegge l'archivio dal database (preventivi e stati cambiati da altri admin) */
+    async reloadArchive(){
+      const out=[];for(let from=0;;from+=1000){const {data,error}=await sb.from('docs').select('id,data').eq('coll','prevq').range(from,from+999);if(error)throw error;out.push(...data);if(data.length<1000)break}
+      const local=new Map(C.archivio.map(a=>[a.id,a])),pending=id=>P.has('q:'+id)||F.has('q:'+id);
+      const list=out.map(d=>d.data).filter(Boolean).map(a=>{if(pending(a.id)&&local.has(a.id))return local.get(a.id);sig[a.id]=JSON.stringify(a);return a});
+      C.archivio.forEach(a=>{if(!list.some(x=>x.id===a.id)&&pending(a.id))list.push(a)});
+      Object.keys(sig).forEach(id=>{if(!id.startsWith('!')&&!list.some(x=>x.id===id))delete sig[id]});
+      list.sort((a,b)=>String(b.aggiornato||b.data||'').localeCompare(String(a.aggiornato||a.data||'')));
+      C.archivio=list;return list},
     get(k,def){const v=C[k];return v==null?def:v},
     set(k,v){
       C[k]=v;
