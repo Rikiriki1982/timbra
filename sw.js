@@ -1,7 +1,8 @@
 // Service worker: l'app resta apribile anche offline. Rete per prima, cache come riserva.
 // Memorizza solo i file dell'app (stessa origine), mai le chiamate a Supabase.
-const C = 'ptp-pages2';
-const FILES = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const C = 'ptp-pages3';
+const JS = ['01-collegamento', '02-base', '03-azioni', '04-pdf', '05-viste', '06-ticket', '07-impostazioni', '08-avvio'].map(f => './js/' + f + '.js');
+const FILES = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', ...JS];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(C).then(c => c.addAll(FILES)).catch(() => {}));
   self.skipWaiting();
