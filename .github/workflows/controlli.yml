@@ -1,0 +1,33 @@
+# Controlli automatici: a ogni modifica GitHub apre l'app in un browser di prova
+# (con un database finto, mai quello vero) e verifica che le funzioni principali vadano.
+name: Controlli automatici
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  controlli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapporto-controlli
+          path: tests/playwright-report
+          retention-days: 14

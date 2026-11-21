@@ -1,0 +1,11 @@
+{
+  "name": "timbra-tests",
+  "private": true,
+  "description": "Controlli automatici di Timbra (non fanno parte dell'app pubblicata)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
