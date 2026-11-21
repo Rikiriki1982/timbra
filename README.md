@@ -4,6 +4,9 @@ Web app per timbrature, permessi/ferie, ticket e report mensili, con ruoli Propr
 
 ## Contenuto
 - `index.html`, `config.js`, `manifest.webmanifest`, `sw.js`, icone: l'app (installabile come PWA)
+- `js/`: il codice dell'app, diviso per argomento (01-collegamento … 08-avvio). Si caricano in ordine e condividono le stesse variabili.
+- `preventivi/`: i preventivi (solo Proprietario e Admin); il codice è in `preventivi/js/`
+- `tests/`: controlli automatici (vedi `tests/LEGGIMI.md`), eseguiti da GitHub a ogni modifica
 - `supabase/setup.sql`: database, regole di accesso e notifiche (da incollare in Supabase → SQL Editor)
 - `supabase/step1-timbrature.sql`: solo l'aggiornamento "timbrature affidabili" (ora del server, orari a mano segnalati con ✏️, storico modifiche). Già incluso in `setup.sql`: serve per aggiornare un database esistente senza rieseguire tutto.
 - `supabase/step2-ferie-orari.sql`: solo l'aggiornamento "festività, orario per dipendente, saldo ferie e permessi". Già incluso in `setup.sql`: serve per aggiornare un database esistente senza rieseguire tutto.
