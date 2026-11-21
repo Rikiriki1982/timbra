@@ -11,6 +11,7 @@ A ogni modifica GitHub apre l'app in un browser di prova, con un **database fint
 - timbratura entrata/uscita con l'orario del server, orari scritti a mano segnati come manuali
 - richiesta ferie del dipendente e approvazione del titolare
 - creazione di un ticket e chiusura
+- l'ordine dei file divisi in `preventivi/js/` (`controlla-ordine.js`)
 - preventivi: accesso solo per Proprietario/Admin, totali, PDF, archivio online, riapertura dal PDF,
   unione delle modifiche di due admin
 

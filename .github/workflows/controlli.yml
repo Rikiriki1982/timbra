@@ -24,6 +24,7 @@ jobs:
           cache: npm
           cache-dependency-path: tests/package-lock.json
       - run: npm ci
+      - run: node controlla-ordine.js ../preventivi/js/*.js
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
       - if: failure()

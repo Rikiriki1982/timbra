@@ -102,7 +102,9 @@ function remoteStore(sb,uid,prev,quotes){
 
 async function start(store){
   window.PREV_STORE=store;
-  const s=document.createElement('script');s.src='app.js';document.body.appendChild(s);
+  /* l'app dei preventivi è divisa in più file (cartella js/): si caricano in quest'ordine, uno dopo l'altro */
+  ['01-base','02-calcoli-modulo','03-voci','04-documento','05-listino','06-pdf','07-clienti-archivio','08-stato-storico'].forEach(f=>{
+    const s=document.createElement('script');s.src='js/'+f+'.js';s.async=false;document.body.appendChild(s)});
 }
 
 (async()=>{
