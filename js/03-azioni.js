@@ -11,7 +11,7 @@ const today=()=>ymd(new Date());
 const dref=(u,dt)=>db.doc('days/'+u+'_'+dt);
 /* orari scritti a mano: ✏️ e dettagli (li scrive il server, non il telefono) */
 const mk=(d,k)=>d?.[k+'_src']==='manual'?' ✏️':'',dts=v=>{const t=new Date(v);return t.toLocaleDateString('it-IT',{day:'numeric',month:'short'})+' alle '+hm(t)};
-const tm=(d,k)=>(d?.[k]||'')+mk(d,k),manInfo=d=>['in','out'].filter(k=>mk(d,k)).map(k=>(k==='in'?'Entrata ':'Uscita ')+d[k]+' inserita a mano il '+dts(d[k+'_at'])+(d[k+'_by']&&d[k+'_by']!==d.uid?' da '+nm(d[k+'_by']):'')).join(' · ');
+const tm=(d,k)=>(d?.[k]||'')+mk(d,k),tmR=(d,k)=>{const t=d?.[k],r=t?(k==='in'?rIn:rOut)(t):t;return tm(d,k)+(t&&r!==t?' (conta '+r+')':'')},manInfo=d=>['in','out'].filter(k=>mk(d,k)).map(k=>(k==='in'?'Entrata ':'Uscita ')+d[k]+' inserita a mano il '+dts(d[k+'_at'])+(d[k+'_by']&&d[k+'_by']!==d.uid?' da '+nm(d[k+'_by']):'')).join(' · ');
 const dsum=x=>!x?'—':x.off?'non lavorato':(x.in||'--:--')+mk(x,'in')+' → '+(x.out||'…')+mk(x,'out')+' · pausa '+(x.pause||0)+' min';
 async function histModal(u,dt){if(!hist)return;let l;try{l=await hist.day(u+'_'+dt)}catch(e){return err(e)}const AC={insert:'Creata',update:'Modificata',delete:'Eliminata'};
  modal('Storico '+new Date(dt+'T12:00').toLocaleDateString('it-IT',{day:'numeric',month:'long'})+' · '+nm(u),E('div',{},l.length?null:E('p',{class:'mu'},'Nessuna modifica registrata (lo storico parte dal 21 novembre 2026).'),
