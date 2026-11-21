@@ -48,6 +48,10 @@ const mineT=(t,u)=>t.uid===u||(t.assignees||[]).includes(u),tixOn=(u,dt)=>Object
 const err=e=>toast('Errore: '+(e?.message||e));
 const run=async p=>{try{await p}catch(e){err(e)}};
 /* ore previste in un giorno tolte le ore di permesso approvate */
+/* ore in formato leggibile: 8,33 → «8 h 20 min» (corto: «8h20») */
+const fHM=(h,c)=>{const m=Math.round((+h||0)*60),a=Math.floor(m/60),b=m%60;return c?a+'h'+(b?pad(b):''):a+' h'+(b?' '+b+' min':'')};
+/* permessi approvati di un giorno: ore conteggiate e tipi */
+const pDay=(u,dt)=>{const s=stdU(u,dt),L=s?Object.values(S.reqs).filter(q=>q.uid===u&&q.type==='permesso'&&q.status==='approved'&&q.from<=dt&&dt<=q.to):[];return{h:L.reduce((a,q)=>a+qH(q,s),0),t:[...new Set(L.map(q=>q.kind?ptName(q.kind):'Permesso'))].join(', ')}};
 const permH=(u,dt)=>{const s=stdU(u,dt);return Object.values(S.reqs).filter(q=>q.uid===u&&q.type==='permesso'&&q.status==='approved'&&q.from<=dt&&dt<=q.to).reduce((a,q)=>a+qH(q,s),0)},sE=(u,dt)=>Math.max(0,stdU(u,dt)-permH(u,dt));
 /* permesso a ore di oggi (approvato o in attesa) e orario previsto spostato di conseguenza */
 const hpOn=(u,dt)=>reqsOn(u,dt).filter(hrly).sort((a,b)=>(a.status==='approved'?0:1)-(b.status==='approved'?0:1))[0],
