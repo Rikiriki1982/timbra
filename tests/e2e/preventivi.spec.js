@@ -70,3 +70,32 @@ test('unione delle modifiche di due admin sul listino',async({page})=>{
   expect(r.conf).toEqual([{id:1,nome:'A',p:5},{id:2,nome:'B',p:2}]);expect(r.confConf).toEqual(['1']);
   expect(r.az).toEqual({nome:'Y',next:9,tel:'2'});expect(r.azConf).toEqual([]);
 });
+
+test('tutte le schede dei preventivi si aprono; listino, archivio e stato funzionano',async({page})=>{
+  await page.goto('/preventivi/');
+  await expect(page.locator('#syncSt')).toContainText('Salvato');
+  // listino: c'è il listino fornitori e si cerca
+  await page.locator('#tabs button[data-v=catalog]').click();
+  await expect(page.locator('#v-catalog')).toBeVisible();
+  // voce dal listino nel preventivo
+  await page.locator('#tabs button[data-v=quote]').click();
+  await page.locator('#c_nome').fill('Cliente Listino');
+  await page.locator('#bFromCat').click();
+  await expect(page.getByText('Aggiungi dal listino')).toBeVisible();
+  await page.getByText('Manodopera',{exact:true}).last().click();
+  await page.getByRole('button',{name:'Chiudi'}).click();
+  await expect(page.locator('[data-k=titolo]')).toHaveCount(1);
+  // salva e trova nell'archivio
+  await page.locator('#q_oggetto').fill('Prova listino');
+  await page.locator('#q_stato').selectOption('inviato');
+  await page.evaluate(()=>document.querySelector('#bSave').click());
+  await page.locator('#tabs button[data-v=archive]').click();
+  await expect(page.locator('#v-archive')).toContainText('Cliente Listino');
+  await expect.poll(async()=>(await page.fakeDb()).tables.docs.filter(d=>d.coll==='prevq').map(d=>d.data.stato)).toEqual(['inviato']);
+  // azienda e storico
+  await page.locator('#tabs button[data-v=company]').click();
+  await expect(page.locator('#v-company')).toBeVisible();
+  await page.locator('#tabs button[data-v=log]').click();
+  await expect(page.locator('#v-log')).toBeVisible();
+  expect(page.errors).toEqual([]);
+});
