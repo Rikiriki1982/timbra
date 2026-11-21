@@ -6,6 +6,8 @@ A ogni modifica GitHub apre l'app in un browser di prova, con un **database fint
 (`fake-supabase.js`), e prova le cose principali:
 
 - apertura dell'app, accesso con email e password, scelta della ditta (`?ditta=`)
+- `supabase/setup.sql`: si installa su un database vuoto, si riesegue senza errori e le regole funzionano
+  (il primo utente è Proprietario, il dipendente non si approva le ferie, non timbra per altri, ecc.)
 - timbratura entrata/uscita con l'orario del server, orari scritti a mano segnati come manuali
 - richiesta ferie del dipendente e approvazione del titolare
 - creazione di un ticket e chiusura
@@ -14,4 +16,4 @@ A ogni modifica GitHub apre l'app in un browser di prova, con un **database fint
 
 Il risultato si vede su GitHub, scheda **Actions**: ✅ tutto bene, ❌ qualcosa si è rotto.
 
-Per provarli sul computer (serve Node.js): `cd tests`, `npm ci`, `npx playwright install chromium`, `npm test`.
+Per provarli sul computer (serve Node.js; per il database serve PostgreSQL e `bash tests/db/prova-database.sh`): `cd tests`, `npm ci`, `npx playwright install chromium`, `npm test`.
