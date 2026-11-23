@@ -294,7 +294,7 @@ drop trigger if exists profiles_guard on public.profiles;
 create trigger profiles_guard before update on public.profiles for each row execute function public.profiles_guard();
 
 -- richieste: l'utente non si approva da solo; ticket: sul proprio sceglie gli assegnatari (solo utenti attivi),
--- su un ticket assegnato da altri cambia solo lo stato
+-- su un ticket assegnato da altri cambia solo lo stato (più materiale e ore di lavoro al completamento)
 create or replace function public.docs_guard() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare c text;
@@ -315,7 +315,10 @@ begin
       return new;
     else
       new.data := old.data || jsonb_build_object('status',
-        case when new.data->>'status' in ('Fare','Attesa','Fatto') then new.data->>'status' else old.data->>'status' end);
+        case when new.data->>'status' in ('Fare','Attesa','Fatto') then new.data->>'status' else old.data->>'status' end)
+        -- al completamento può scrivere anche materiale usato, ore di lavoro e pagina OneNote (rep) e la data di chiusura
+        || case when jsonb_typeof(new.data->'rep') = 'object' then jsonb_build_object('rep', new.data->'rep') else '{}'::jsonb end
+        || case when jsonb_typeof(new.data->'doneAt') = 'number' then jsonb_build_object('doneAt', new.data->'doneAt') else '{}'::jsonb end;
     end if;
     return new;
   end if;

@@ -16,6 +16,7 @@ A ogni modifica GitHub apre l'app in un browser di prova, con un **database fint
 - l'ordine dei file divisi in `js/` e `preventivi/js/` (`controlla-ordine.js`)
 - preventivi: accesso solo per Proprietario/Admin, totali, PDF, archivio online, riapertura dal PDF,
   unione delle modifiche di due admin
+- completamento del ticket con materiale usato, ore di lavoro e link alla pagina OneNote
 
 Il risultato si vede su GitHub, scheda **Actions**: ✅ tutto bene, ❌ qualcosa si è rotto.
 
