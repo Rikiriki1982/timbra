@@ -13,7 +13,15 @@ const same=(a,b,cols)=>cols.every(c=>String(a[c])===String(b[c]));
 let seq=1;
 
 /* come il trigger days_stamp del database: "punch" fa scrivere l'orario al server */
+/* come il trigger tix_clock: clk_do = start / pause / stop aggiorna il cronometro di chi lo preme, con l'ora del "server" */
+function clock(row,old,uid){
+  const d={...row.data},a=d.clk_do,t=Date.now(),o=(old&&old.data)||{},c={...(old&&o.clk||{})};delete d.clk_do;delete d.clk;
+  if(['start','pause','stop'].includes(a)){const m=c[uid]||{},n={ms:(+m.ms||0)+(m.on?Math.max(0,t-m.on):0)};if(a==='start')n.on=t;if(a==='stop')n.end=true;c[uid]=n}
+  if(old&&d.status==='Fatto'&&o.status!=='Fatto')for(const k in c)if(c[k].on)c[k]={ms:(+c[k].ms||0)+Math.max(0,t-c[k].on),end:true};
+  if(Object.keys(c).length)d.clk=c;return{...row,data:d};
+}
 function stamp(row,old,uid){
+  if(row.coll==='tix')return clock(row,old,uid);
   if(row.coll!=='days')return row;
   const d={...row.data},p=d.punch,o=(old&&old.data)||{},t=now();delete d.punch;
   for(const k of['in','out']){

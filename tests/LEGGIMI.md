@@ -18,6 +18,7 @@ A ogni modifica GitHub apre l'app in un browser di prova, con un **database fint
   unione delle modifiche di due admin
 - completamento del ticket con materiale usato (dal listino, con seriali), ore di lavoro e link alla pagina OneNote;
   il ticket creato da un preventivo nasce con il materiale del preventivo
+- cronometro del lavoro nel ticket (Avvio / Pausa / Fine lavori): ogni tecnico ha il suo, il totale precompila le ore di lavoro
 
 Il risultato si vede su GitHub, scheda **Actions**: ✅ tutto bene, ❌ qualcosa si è rotto.
 
