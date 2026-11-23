@@ -60,6 +60,10 @@ function ticketDesc(a){
   if(rows.length)L.push("",a.tipo==="conn"?"Servizi:":"Lavori e materiali:",...rows);
   if(a.tempi)L.push("","Tempi: "+a.tempi);
   return L.join("\n")}
+/* materiale previsto per il ticket: le voci del preventivo tranne la manodopera (il tecnico lo conferma alla chiusura) */
+function ticketMat(a){
+  if(a.tipo==="conn")return[];
+  return(a.righe||[]).filter(r=>r.cat!=="man"&&n(r.qta)>0&&lbl(r)!=="Voce").map(r=>{const o={d:lbl(r),q:(num.format(n(r.qta))+" "+(r.um&&r.um!=="pz"?r.um:"")).trim()};if(r.codice)o.c=r.codice;return o})}
 async function ticketModal(a){
   if(!REMOTE)return toast("I ticket si creano solo con l'accesso all'app");
   let T;try{T=await loadTeam()}catch(e){return toast("Non riesco a leggere il team: "+(e.message||e))}
@@ -87,7 +91,7 @@ async function ticketModal(a){
     const set=new Set(au);ag.forEach(id=>{const g=T.groups.find(x=>x.id===id);(g&&g.members||[]).forEach(m=>{if(T.users.some(u=>u.id===m))set.add(m)})});
     const data={title:t,desc:$("#tkD").value,due:$("#tkDue").value,status:"Fare",photo:"",time:$("#tkTime").value,dur:+$("#tkDur").value,rem:60,prio:$("#tkPr").value,doneAt:0,
       assignUsers:au,groups:ag,gnames:ag.map(id=>(T.groups.find(x=>x.id===id)||{}).name).filter(Boolean),assignees:[...set],
-      uid:store.uid,created:Date.now(),preventivo:{id:a.id,numero:a.numero}};
+      uid:store.uid,created:Date.now(),preventivo:{id:a.id,numero:a.numero},matPrev:ticketMat(a)};
     const id=(crypto.randomUUID&&crypto.randomUUID())||uid()+uid(),b=$("#tkOk");b.disabled=true;b.textContent="Creo…";
     const r=await store.sb.from("docs").insert({coll:"tix",id,data});
     if(r.error){b.disabled=false;b.textContent="Crea ticket";return toast("Ticket non creato: "+r.error.message)}

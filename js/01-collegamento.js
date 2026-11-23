@@ -46,6 +46,8 @@ const voice={transcribe:async f=>{const fd=new FormData();fd.append('file',f,f.n
  url:async path=>{const r=await sb.storage.from('ticket-audio').createSignedUrl(path,3600);if(r.error)throw new Error(r.error.message);return r.data.signedUrl},
  del:async path=>{await sb.storage.from('ticket-audio').remove([path])}};
 const invite=async b=>{const{data,error}=await sb.functions.invoke('invite-user',{body:b});if(error){let m=error.message;try{const j=await error.context.json();if(j?.error)m=j.error}catch(e){}throw new Error(m)}if(data?.error)throw new Error(data.error);subs.forEach(f=>f());return data};
+/* voci del listino dei preventivi per i ticket: solo codice, nome e unità (niente prezzi), dalla funzione listino_voci */
+window.ptpCat={voci:async()=>ck(await sb.rpc('listino_voci'))};
 const dl={save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':filename.endsWith('.pdf')?'application/pdf':'text/csv'}));a.download=filename;document.body.append(a);a.click();a.remove();return'saved'}};
 const hist={day:async id=>ck(await sb.from('days_log').select('at,by_user,action,before,after').eq('day_id',id).order('at',{ascending:false}).limit(100)),
  tix:async id=>ck(await sb.from('tix_log').select('at,by_user,action,changes').eq('tix_id',id).order('at',{ascending:false}).limit(100))};
