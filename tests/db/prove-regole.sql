@@ -134,4 +134,17 @@ do $$ begin
   assert (select count(*) from public.push_due(timestamptz '2026-11-17 16:01 Europe/Rome') where tag = 'out') = 1, 'con il permesso dalle 16 il promemoria di uscita deve arrivare alle 16';
 end $$;
 
+-- completamento del ticket: Mario, sul ticket assegnato da altri, salva anche materiale e ore (rep), ma non il resto
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false); end $$;
+insert into public.docs (coll, id, data) values ('tix', 't9', '{"uid":"00000000-0000-4000-8000-000000000001","title":"Caldaia","status":"Fare","assignees":["00000000-0000-4000-8000-000000000002"]}');
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false); end $$;
+set role authenticated;
+update public.docs set data = data || '{"status":"Fatto","doneAt":1763900000000,"title":"cambiato","rep":{"mat":[{"d":"Valvola","q":"1"}],"min":90,"link":"https://onedrive.live.com/x"}}' where id = 't9';
+reset role;
+do $$ declare d jsonb := (select data from public.docs where id = 't9'); begin
+  assert d->>'status' = 'Fatto' and d->>'title' = 'Caldaia', 'sul ticket assegnato il titolo non si cambia';
+  assert (d->'rep'->>'min')::int = 90 and d->'rep'->'mat'->0->>'d' = 'Valvola', 'materiale e ore del completamento non salvati';
+  assert (d->>'doneAt')::bigint = 1763900000000, 'data di completamento non salvata';
+end $$;
+
 select 'Tutte le prove del database sono passate' as esito;

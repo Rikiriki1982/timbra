@@ -21,6 +21,7 @@ test('nuovo ticket salvato e visibile in elenco',async({page})=>{
   await expect(page.locator('main')).toContainText('Da fare (1)');
   // segna come fatto
   await page.getByTitle('Segna come fatto').click();
+  await page.locator('.md').getByRole('button',{name:'✓ Completa'}).click();
   await expect.poll(async()=>(await tix())[0].data.status).toBe('Fatto');
   expect(page.errors).toEqual([]);
 });

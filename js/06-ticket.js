@@ -16,15 +16,15 @@ function tRow(t,o){o=o||{};tVis.push(t.id);const sl=S.tsel,on=!!sl&&sl.has(t.id)
   o.tm?E('div',{class:'ttm'},t.time||'—'):null,
   E('div',{class:'tt'},E('b',{style:t.status==='Fatto'?'text-decoration:line-through':''},t.title),meta?E('div',{class:'mu'},meta):null,ins?E('div',{class:'mu ins'},ins):null),
   t.prio&&t.prio!=='normale'?E('span',{class:'tag',style:'background:'+p[1]},p[0]):null,
-  !sl&&t.status!=='Fatto'?E('button',{class:'btn gh sm',title:'Segna come fatto',onclick:e=>{e.stopPropagation();run(setSt(t,'Fatto'));toast('Ticket completato: spostato in Archivio 🗄')}},'✓'):null,
+  !sl&&t.status!=='Fatto'?E('button',{class:'btn gh sm',title:'Segna come fatto',onclick:e=>{e.stopPropagation();doneModal(t)}},'✓'):null,
   !sl&&t.status==='Fatto'&&tEd(t)?E('button',{class:'btn gh sm',title:'Ripristina',onclick:e=>{e.stopPropagation();run(setSt(t,'Fare'));toast('Ticket ripristinato')}},'↩'):null)}
 function tixDetail(t){const k=tCls(t),p=PR[t.prio]||PR.normale,a=(t.assignees||[]).map(nm),can=isA()||t.uid===uid,
   ln=(l,v)=>v?E('div',{},E('span',{class:'mu'},l+': '),v):null;
  modal(t.title,E('div',{},E('div',{class:'row',style:'margin-bottom:6px'},E('span',{class:'tag',style:'background:'+p[1]},'Urgenza: '+p[0]),E('span',{class:'tag tc '+k},TC[k]),E('span',{class:'tag'},{Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'}[t.status]||t.status)),
    t.desc?E('p',{style:'white-space:pre-wrap'},t.desc):null,t.audio&&voice?audioEl(t.audio):null,t.photo?E('img',{class:'ph',src:t.photo,onclick:()=>showPh(t.photo)}):null,
    ln('Scadenza',t.due?fmtD(t.due)+(t.time?' alle '+t.time:''):'nessuna'),ln('Inserito il',t.created?fmtI(t.created)+' da '+nm(t.uid):'da '+nm(t.uid)),
-   ln('Assegnato a',a.length?a.join(', ')+((t.gnames||[]).length?' · gruppi: '+t.gnames.join(', '):''):''),
-   E('div',{class:'row',style:'margin-top:10px'},...['Fare','Attesa','Fatto'].filter(s=>s!==t.status).map(s=>E('button',{class:'btn gh sm',onclick:()=>{run(setSt(t,s));close();if(s==='Fatto')toast('Spostato in Archivio 🗄')}},'→ '+{Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'}[s])),
+   ln('Assegnato a',a.length?a.join(', ')+((t.gnames||[]).length?' · gruppi: '+t.gnames.join(', '):''):''),repView(t),t.status==='Fatto'&&canRep(t)?E('button',{class:'btn gh sm',style:'margin-top:6px',onclick:()=>doneModal(t)},t.rep?'✏️ Modifica materiale e ore':'🧰 Aggiungi materiale e ore'):null,
+   E('div',{class:'row',style:'margin-top:10px'},...['Fare','Attesa','Fatto'].filter(s=>s!==t.status).map(s=>E('button',{class:'btn gh sm',onclick:()=>{if(s==='Fatto')return doneModal(t);run(setSt(t,s));close()}},'→ '+{Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'}[s])),
     S.staff[uid]?.calSync&&t.due?E('button',{class:'btn gh sm',onclick:()=>calModal(t)},'📅 Calendario'):null,
     can?E('button',{class:'btn gh sm',onclick:()=>tixModal(t)},'✏️ Modifica'):null,
     can?E('button',{class:'btn gh sm',onclick:()=>ask('Eliminare il ticket?',()=>{run(db.doc('tix/'+t.id).delete());if(t.audio&&voice)voice.del(t.audio.path).catch(()=>{})})},'🗑 Elimina'):null)),[E('button',{class:'btn',onclick:close},'Chiudi')])}
@@ -240,3 +240,37 @@ function render(){if(!uid)return;role=owner?'super':S.staff[uid]?.role||'user';c
  $('#nav').replaceChildren(...tabs.map(([k,i,l])=>E('button',{class:S.tab===k?'on':'',onclick:()=>{S.tab=k;S.sel=null;render()}},E('span',{},i),l,k==='req'&&isA()&&pend?E('i',{},pend):null)));
  if(S.tab==='team'&&!isA())S.tab='oggi';
  $('#v').classList.toggle('wide',S.tab==='tix'&&(S.tv||tvDef())==='mese');$('#v').replaceChildren({oggi:vOggi,cal:vCal,req:vReq,tix:vTix,rep:vRep,team:vTeam}[S.tab]());scrollTo(0,y)}
+
+/* completamento del ticket: materiale usato, ore di lavoro, note e link alla pagina OneNote (campo rep) */
+const okLink=u=>/^(https:\/\/|onenote:)/i.test(u||''),
+ fmtMin=m=>{m=+m||0;const h=Math.floor(m/60),r=m%60;return(h?h+' h':'')+(h&&r?' ':'')+(r||!h?r+' min':'')},
+ canRep=t=>tEd(t)||(t.assignees||[]).includes(uid);
+function repView(t){const r=t.rep;if(!r||!((r.mat||[]).length||r.min||r.link||r.note))return null;
+ return E('div',{class:'card',style:'margin:8px 0'},E('b',{},'🧰 Lavoro svolto'),
+  r.min?E('div',{},E('span',{class:'mu'},'Ore di lavoro: '),fmtMin(r.min)):null,
+  (r.mat||[]).length?E('div',{},E('span',{class:'mu'},'Materiale usato:'),E('ul',{style:'margin:4px 0 0;padding-left:20px'},r.mat.map(m=>E('li',{},m.d+(m.q?' · '+m.q:''))))):null,
+  r.note?E('p',{style:'white-space:pre-wrap;margin:4px 0'},r.note):null,
+  okLink(r.link)?E('a',{class:'btn gh sm',href:r.link,target:'_blank',rel:'noopener',style:'text-decoration:none;display:inline-block;margin-top:6px'},'📓 Apri pagina OneNote'):null,
+  r.by?E('div',{class:'mu',style:'font-size:12px;margin-top:4px'},'Inserito da '+nm(r.by)+(r.at?' il '+fmtI(r.at):'')):null)}
+function doneModal(t){const r=t.rep||{},done=t.status==='Fatto',rows=E('div',{}),
+ addRow=m=>{m=m||{};const d=E('input',{placeholder:'Materiale (es. cavo di rete)',value:m.d||'',style:'flex:1'}),q=E('input',{placeholder:'Q.tà',value:m.q||'',style:'width:70px'}),
+   row=E('div',{class:'row mat',style:'margin:0 0 6px;flex-wrap:nowrap'},d,q,E('button',{class:'btn gh sm',title:'Togli riga',onclick:()=>row.remove()},'✕'));rows.append(row);return d},
+ hh=E('input',{type:'number',min:0,max:999,inputmode:'numeric',placeholder:'0',value:r.min?Math.floor(r.min/60):'',style:'width:70px'}),
+ mm=E('input',{type:'number',min:0,max:59,step:5,inputmode:'numeric',placeholder:'0',value:r.min?r.min%60:'',style:'width:70px'}),
+ ln=E('input',{type:'url',placeholder:'Incolla qui il link della pagina',value:r.link||'',style:'width:100%'}),
+ no=E('textarea',{rows:2,placeholder:'Note sul lavoro (facoltative)'},r.note||''),
+ msg=E('p',{style:'color:#e00018;margin:0'});
+ ((r.mat||[]).length?r.mat:[{}]).forEach(addRow);
+ const save=()=>{const h=+hh.value||0,m=+mm.value||0,min=h*60+m,link=ln.value.trim();
+  if(h<0||m<0||m>59||h>999||!Number.isInteger(h)||!Number.isInteger(m)){msg.textContent='Controlla le ore di lavoro.';return}
+  if(link&&!okLink(link)){msg.textContent='Il link della pagina OneNote deve iniziare con https://';return}
+  const mat=[...rows.querySelectorAll('.mat')].map(x=>{const[d,q]=x.querySelectorAll('input');return{d:d.value.trim(),q:q.value.trim()}}).filter(x=>x.d),
+   u={rep:{mat,min,link,note:no.value.trim(),by:uid,at:Date.now()}};
+  if(!done){u.status='Fatto';u.doneAt=Date.now()}
+  run(db.doc('tix/'+t.id).update(u));close();toast(done?'Materiale e ore salvati':'Ticket completato: spostato in Archivio 🗄')};
+ modal((done?'🧰 ':'✓ Completa · ')+t.title,E('div',{},
+  E('div',{class:'f'},E('span',{},'Materiale usato'),rows,E('button',{class:'btn gh sm',onclick:()=>addRow().focus()},'➕ Aggiungi materiale')),
+  E('div',{class:'f'},E('span',{},'Ore di lavoro'),E('div',{class:'row',style:'margin:0'},hh,'ore',mm,'minuti')),
+  fld('Pagina OneNote (facoltativa)',ln),E('p',{class:'mu',style:'margin:-6px 0 10px;font-size:13px'},'In OneNote: tasto destro sulla pagina → «Copia collegamento alla pagina», poi incolla qui.'),
+  fld('Note',no),msg),
+  [E('button',{class:'btn gh',onclick:close},'Annulla'),E('button',{class:'btn ok',onclick:save},done?'Salva':'✓ Completa')])}
