@@ -336,6 +336,21 @@ end $$;
 drop trigger if exists docs_guard on public.docs;
 create trigger docs_guard before insert or update or delete on public.docs for each row execute function public.docs_guard();
 
+-- listino per i ticket: i dipendenti scelgono il materiale usato dal listino dei preventivi,
+-- ma vedono solo codice, nome e unità (niente prezzi né costi). Manodopera esclusa.
+create or replace function public.listino_voci()
+returns table (id text, codice text, titolo text, descr text, um text)
+language sql stable security definer set search_path = public as $$
+  select e->>'id', coalesce(e->>'codice', ''), coalesce(e->>'titolo', ''),
+         left(split_part(coalesce(e->>'descr', ''), E'\n', 1), 200), coalesce(e->>'um', '')
+    from public.docs d,
+         jsonb_array_elements(case when jsonb_typeof(d.data->'v') = 'array' then d.data->'v' else '[]'::jsonb end) e
+   where d.coll = 'prev' and d.id = 'listino' and public.my_role() is not null
+     and jsonb_typeof(e) = 'object' and coalesce(e->>'cat', '') <> 'man'
+$$;
+revoke all on function public.listino_voci() from public, anon;
+grant execute on function public.listino_voci() to authenticated;
+
 create or replace function public.notif_guard() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin

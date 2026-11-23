@@ -147,4 +147,17 @@ do $$ declare d jsonb := (select data from public.docs where id = 't9'); begin
   assert (d->>'doneAt')::bigint = 1763900000000, 'data di completamento non salvata';
 end $$;
 
+-- listino per i ticket: Mario non legge il listino, ma dalla funzione riceve codice e nome, senza prezzi e senza manodopera
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false); end $$;
+insert into public.docs (coll, id, data) values ('prev', 'listino', '{"v":[{"id":"a1","cat":"mat","codice":"VS1","titolo":"Valvola","um":"pz","prezzo":12.5,"costo":7},{"id":"a2","cat":"man","descr":"Manodopera","um":"h","prezzo":40}]}')
+  on conflict (coll, id) do update set data = excluded.data;
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false); end $$;
+set role authenticated;
+do $$ begin
+  assert (select count(*) from public.docs where coll = 'prev' and id = 'listino') = 0, 'il dipendente non deve leggere il listino con i prezzi';
+  assert (select count(*) from public.listino_voci()) = 1, 'il dipendente deve vedere le voci del listino tranne la manodopera';
+  assert (select codice || ' ' || titolo from public.listino_voci()) = 'VS1 Valvola', 'voce del listino sbagliata';
+end $$;
+reset role;
+
 select 'Tutte le prove del database sono passate' as esito;
