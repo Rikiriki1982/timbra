@@ -98,6 +98,35 @@ update public.docs set data = data || '{"status":"Fatto","title":"cambiato"}' wh
 reset role;
 do $$ begin assert (select (data->>'status') || (data->>'title') from public.docs where id = 't1') = 'FattoRouter', 'sul ticket assegnato si cambia solo lo stato'; end $$;
 
+-- storico dei ticket: creazione e cambio di stato registrati, con chi e cosa (il titolo non è cambiato davvero)
+do $$ declare u jsonb := (select changes from public.tix_log where tix_id = 't1' and action = 'update'); begin
+  assert (select count(*) from public.tix_log where tix_id = 't1' and action = 'insert' and by_user = '00000000-0000-4000-8000-000000000001') = 1, 'lo storico deve registrare chi ha creato il ticket';
+  assert (select by_user from public.tix_log where tix_id = 't1' and action = 'update') = '00000000-0000-4000-8000-000000000002', 'lo storico deve registrare chi ha cambiato lo stato';
+  assert u = '{"status":["Fare","Fatto"]}'::jsonb, 'lo storico deve avere solo lo stato, prima e dopo: ' || coalesce(u::text, 'vuoto');
+end $$;
+-- foto: nel registro non finisce l'immagine; ticket non suo: Mario non ne vede lo storico
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false); end $$;
+insert into public.docs (coll, id, data) values ('tix', 't2', '{"uid":"00000000-0000-4000-8000-000000000001","title":"Privato","status":"Fare","photo":"data:image/jpeg;base64,AAAA"}');
+update public.docs set data = data || '{"photo":"data:image/jpeg;base64,BBBB","due":"2026-12-01"}' where id = 't2';
+do $$ begin
+  assert (select changes->>'photo' from public.tix_log where tix_id = 't2' and action = 'insert') = '[foto]', 'la foto non va copiata nello storico';
+  assert (select changes from public.tix_log where tix_id = 't2' and action = 'update') = '{"due":[null,"2026-12-01"],"photo":["[foto]","[nuova foto]"]}'::jsonb, 'modifica di scadenza e foto non registrata bene';
+end $$;
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false); end $$;
+set role authenticated;
+do $$ begin
+  assert (select count(*) from public.tix_log where tix_id = 't1') = 2, 'chi ha il ticket assegnato deve vederne lo storico';
+  assert (select count(*) from public.tix_log where tix_id = 't2') = 0, 'lo storico di un ticket altrui non si vede';
+  begin
+    delete from public.tix_log;
+    assert (select count(*) from public.tix_log where tix_id = 't1') = 2, 'lo storico non si deve poter cancellare';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false); end $$;
+delete from public.docs where id = 't2';
+do $$ begin assert (select changes->>'title' from public.tix_log where tix_id = 't2' and action = 'delete') = 'Privato', 'la cancellazione deve lasciare una copia nello storico'; end $$;
+
 -- arrotondamento e tipi di permesso (settings/rules): li salvano Proprietario e Admin, i dati ditta solo il Proprietario
 do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false); end $$;
 set role authenticated;

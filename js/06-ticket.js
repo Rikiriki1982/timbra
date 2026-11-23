@@ -27,7 +27,25 @@ function tixDetail(t){const k=tCls(t),p=PR[t.prio]||PR.normale,a=(t.assignees||[
    E('div',{class:'row',style:'margin-top:10px'},...['Fare','Attesa','Fatto'].filter(s=>s!==t.status).map(s=>E('button',{class:'btn gh sm',onclick:()=>{run(setSt(t,s));close();if(s==='Fatto')toast('Spostato in Archivio 🗄')}},'→ '+{Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'}[s])),
     S.staff[uid]?.calSync&&t.due?E('button',{class:'btn gh sm',onclick:()=>calModal(t)},'📅 Calendario'):null,
     can?E('button',{class:'btn gh sm',onclick:()=>tixModal(t)},'✏️ Modifica'):null,
+    hist?.tix?E('button',{class:'btn gh sm',onclick:()=>tixHist(t)},'🕓 Storico modifiche'):null,
     can?E('button',{class:'btn gh sm',onclick:()=>ask('Eliminare il ticket?',()=>{run(db.doc('tix/'+t.id).delete());if(t.audio&&voice)voice.del(t.audio.path).catch(()=>{})})},'🗑 Elimina'):null)),[E('button',{class:'btn',onclick:close},'Chiudi')])}
+
+/* storico modifiche del ticket (tabella tix_log, scritta dal database) */
+const TXF={title:'Titolo',desc:'Descrizione',status:'Stato',prio:'Urgenza',due:'Scadenza',time:'Ora',dur:'Durata',rem:'Promemoria',assignees:'Assegnato a',gnames:'Gruppi',photo:'Foto',audio:'Vocale',uid:'Inserito da',preventivo:'Preventivo'},
+ TXS={Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'};
+function txv(k,v){if(v==null||v===''||(Array.isArray(v)&&!v.length))return'—';
+ if(k==='status')return TXS[v]||v;if(k==='prio')return(PR[v]||[v])[0];if(k==='due')return fmtD(v);
+ if(k==='dur')return v>=60?(Math.floor(v/60)+' h'+(v%60?' '+v%60+' min':'')):v+' min';if(k==='rem')return+v?(v>=1440?'1 giorno':v>=60?(v/60)+' ore':v+' min')+' prima':'nessuno';
+ if(k==='assignees')return[].concat(v).map(nm).join(', ');if(k==='uid')return nm(v);if(k==='gnames')return[].concat(v).join(', ');
+ if(k==='photo')return v==='[nuova foto]'?'nuova foto':'foto';if(k==='audio')return'vocale';if(k==='desc'){v=String(v);return v.length>80?v.slice(0,80)+'…':v}
+ if(typeof v==='object')return Array.isArray(v)?v.join(', '):(v.numero?'n. '+v.numero:JSON.stringify(v));return String(v)}
+function txLines(r){const c=r.changes||{};
+ if(r.action==='update')return Object.keys(c).filter(k=>TXF[k]&&Array.isArray(c[k])).map(k=>E('div',{class:'mu'},TXF[k]+': '+txv(k,c[k][0])+'  ⇒  '+txv(k,c[k][1])));
+ return['status','prio','due','assignees','gnames','photo','audio'].filter(k=>c[k]!=null&&c[k]!==''&&!(Array.isArray(c[k])&&!c[k].length)&&!(k==='status'&&r.action==='insert'&&c[k]==='Fare')).map(k=>E('div',{class:'mu'},TXF[k]+': '+txv(k,c[k])))}
+async function tixHist(t){if(!hist?.tix)return;let l;try{l=await hist.tix(t.id)}catch(e){return err(/tix_log/.test(e.message||'')?new Error('Lo storico dei ticket non è ancora attivo: va eseguito su Supabase il file SQL dello storico ticket.'):e)}
+ const AC={insert:'Creato',update:'Modificato',delete:'Eliminato'};
+ modal('Storico · '+t.title,E('div',{},l.length?null:E('p',{class:'mu'},'Nessuna modifica registrata (lo storico dei ticket parte dal 23 novembre 2026).'),
+  ...l.map(r=>E('div',{style:'margin-bottom:10px'},E('b',{},dts(r.at)+' · '+AC[r.action]+' da '+(r.by_user?nm(r.by_user):'sistema')),...txLines(r)))),[E('button',{class:'btn',onclick:close},'Chiudi')])}
 
 const tEd=t=>isA()||t.uid===uid;
 function tixBar(){const ts=Object.values(S.tix).filter(t=>S.tsel.has(t.id)),n=ts.length,ok=n>0;

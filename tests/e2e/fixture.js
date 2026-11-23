@@ -11,7 +11,7 @@ function seed({as=ADMIN,docs=[],loggedIn=true}={}){
   return{
     users:[ADMIN,EMP].map(u=>({...u,password:'prova123'})),
     session:loggedIn?{access_token:'fake',user:{id:as.id,email:as.email,user_metadata:{name:as.name}}}:undefined,
-    tables:{profiles:[profile(ADMIN),profile(EMP)],docs,notifications:[],push_subs:[],days_log:[],prev_log:[]},
+    tables:{profiles:[profile(ADMIN),profile(EMP)],docs,notifications:[],push_subs:[],days_log:[],prev_log:[],tix_log:[]},
     rpc:{team_list:[],team_groups:[]},
     calls:[]
   };
