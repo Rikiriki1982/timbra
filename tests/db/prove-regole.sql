@@ -189,4 +189,40 @@ do $$ begin
 end $$;
 reset role;
 
+-- cronometro del lavoro: Mario avvia, mette in pausa e finisce; gli orari li scrive il server e non si falsificano
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false); end $$;
+insert into public.docs (coll, id, data) values ('tix', 't11', '{"uid":"00000000-0000-4000-8000-000000000001","title":"Server","status":"Fare","assignees":["00000000-0000-4000-8000-000000000002"],"clk":{"x":{"ms":999}}}');
+do $$ begin assert (select data ? 'clk' from public.docs where id = 't11') = false, 'alla creazione il cronometro non si scrive a mano'; end $$;
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false); end $$;
+set role authenticated;
+update public.docs set data = data || '{"clk_do":"start"}' where id = 't11';
+update public.docs set data = data || '{"clk":{"00000000-0000-4000-8000-000000000002":{"ms":99999999}}}' where id = 't11';
+reset role;
+do $$ declare c jsonb := (select data->'clk'->'00000000-0000-4000-8000-000000000002' from public.docs where id = 't11'); begin
+  assert (c->>'ms')::bigint = 0 and c ? 'on', 'Avvio lavori: il cronometro deve partire (e non si cambia a mano)';
+  assert (select data ? 'clk_do' from public.docs where id = 't11') = false, 'il comando non va salvato nel ticket';
+end $$;
+-- un'ora fa (lo sposta il pannello, senza utente)
+do $$ begin perform set_config('request.jwt.claim.sub', '', false); end $$;
+update public.docs set data = jsonb_set(data, '{clk,00000000-0000-4000-8000-000000000002,on}', to_jsonb(floor(extract(epoch from now()) * 1000)::bigint - 3600000)) where id = 't11';
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false); end $$;
+set role authenticated;
+update public.docs set data = data || '{"clk_do":"pause"}' where id = 't11';
+reset role;
+do $$ declare c jsonb := (select data->'clk'->'00000000-0000-4000-8000-000000000002' from public.docs where id = 't11'); begin
+  assert (c->>'ms')::bigint between 3600000 and 3660000 and not c ? 'on', 'Pausa: il cronometro deve fermarsi a circa un''ora';
+end $$;
+set role authenticated;
+update public.docs set data = data || '{"clk_do":"start"}' where id = 't11';
+reset role;
+-- il titolare completa il ticket: il cronometro di Mario si ferma da solo
+do $$ begin perform set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false); end $$;
+set role authenticated;
+update public.docs set data = data || '{"status":"Fatto"}' where id = 't11';
+reset role;
+do $$ declare c jsonb := (select data->'clk'->'00000000-0000-4000-8000-000000000002' from public.docs where id = 't11'); begin
+  assert not c ? 'on' and (c->>'end')::boolean and (c->>'ms')::bigint >= 3600000, 'completando il ticket i cronometri si devono fermare';
+  assert (select count(*) from public.tix_log where tix_id = 't11' and changes ? 'clk') >= 3, 'lo storico deve registrare avvio e pausa';
+end $$;
+
 select 'Tutte le prove del database sono passate' as esito;

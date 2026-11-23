@@ -10,7 +10,7 @@ function tCls(t){if(t.status==='Fatto')return'done';if(!t.due)return'none';const
 const tSort=(a,b)=>((a.due||'9')+(a.time||'99:99')).localeCompare((b.due||'9')+(b.time||'99:99'))||PRK.indexOf(a.prio||'normale')-PRK.indexOf(b.prio||'normale')||(a.created||0)-(b.created||0);
 let tVis=[];
 function tRow(t,o){o=o||{};tVis.push(t.id);const sl=S.tsel,on=!!sl&&sl.has(t.id);const k=tCls(t),p=PR[t.prio]||PR.normale,a=(t.assignees||[]).map(nm),
-  meta=[t.due&&!o.noDate?fmtD(t.due)+(t.time?' '+t.time:''):t.due?'':'Senza data',a.length?'👤 '+a.join(', '):'',t.audio?'🎤 vocale':'',t.status==='Attesa'?'⏸ in attesa':'',t.status==='Fatto'&&t.doneAt?'completato il '+fmtI(t.doneAt):''].filter(Boolean).join(' · '),ins=(t.created?'Inserito il '+fmtI(t.created):'')+(t.uid!==uid?(t.created?' · ':'')+'da '+nm(t.uid):'');
+  meta=[t.due&&!o.noDate?fmtD(t.due)+(t.time?' '+t.time:''):t.due?'':'Senza data',a.length?'👤 '+a.join(', '):'',t.audio?'🎤 vocale':'',t.status==='Attesa'?'⏸ in attesa':'',t.clk?.[uid]?.on&&t.status!=='Fatto'?'⏱️ lavoro in corso':'',t.status==='Fatto'&&t.doneAt?'completato il '+fmtI(t.doneAt):''].filter(Boolean).join(' · '),ins=(t.created?'Inserito il '+fmtI(t.created):'')+(t.uid!==uid?(t.created?' · ':'')+'da '+nm(t.uid):'');
  return E('div',{class:'tr '+k+(on?' sel':''),style:'--pc:'+p[1],onclick:()=>{if(sl){on?sl.delete(t.id):sl.add(t.id);render()}else tixDetail(t)}},
   sl?E('input',{type:'checkbox',class:'ck',checked:on}):null,
   o.tm?E('div',{class:'ttm'},t.time||'—'):null,
@@ -23,7 +23,7 @@ function tixDetail(t){const k=tCls(t),p=PR[t.prio]||PR.normale,a=(t.assignees||[
  modal(t.title,E('div',{},E('div',{class:'row',style:'margin-bottom:6px'},E('span',{class:'tag',style:'background:'+p[1]},'Urgenza: '+p[0]),E('span',{class:'tag tc '+k},TC[k]),E('span',{class:'tag'},{Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'}[t.status]||t.status)),
    t.desc?E('p',{style:'white-space:pre-wrap'},t.desc):null,t.audio&&voice?audioEl(t.audio):null,t.photo?E('img',{class:'ph',src:t.photo,onclick:()=>showPh(t.photo)}):null,
    ln('Scadenza',t.due?fmtD(t.due)+(t.time?' alle '+t.time:''):'nessuna'),ln('Inserito il',t.created?fmtI(t.created)+' da '+nm(t.uid):'da '+nm(t.uid)),
-   ln('Assegnato a',a.length?a.join(', ')+((t.gnames||[]).length?' · gruppi: '+t.gnames.join(', '):''):''),repView(t),t.status==='Fatto'&&canRep(t)?E('button',{class:'btn gh sm',style:'margin-top:6px',onclick:()=>doneModal(t)},t.rep?'✏️ Modifica materiale e ore':'🧰 Aggiungi materiale e ore'):null,
+   ln('Assegnato a',a.length?a.join(', ')+((t.gnames||[]).length?' · gruppi: '+t.gnames.join(', '):''):''),clkCard(t),repView(t),t.status==='Fatto'&&canRep(t)?E('button',{class:'btn gh sm',style:'margin-top:6px',onclick:()=>doneModal(t)},t.rep?'✏️ Modifica materiale e ore':'🧰 Aggiungi materiale e ore'):null,
    E('div',{class:'row',style:'margin-top:10px'},...['Fare','Attesa','Fatto'].filter(s=>s!==t.status).map(s=>E('button',{class:'btn gh sm',onclick:()=>{if(s==='Fatto')return doneModal(t);run(setSt(t,s));close()}},'→ '+{Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'}[s])),
     S.staff[uid]?.calSync&&t.due?E('button',{class:'btn gh sm',onclick:()=>calModal(t)},'📅 Calendario'):null,
     can?E('button',{class:'btn gh sm',onclick:()=>tixModal(t)},'✏️ Modifica'):null,
@@ -31,14 +31,14 @@ function tixDetail(t){const k=tCls(t),p=PR[t.prio]||PR.normale,a=(t.assignees||[
     can?E('button',{class:'btn gh sm',onclick:()=>ask('Eliminare il ticket?',()=>{run(db.doc('tix/'+t.id).delete());if(t.audio&&voice)voice.del(t.audio.path).catch(()=>{})})},'🗑 Elimina'):null)),[E('button',{class:'btn',onclick:close},'Chiudi')])}
 
 /* storico modifiche del ticket (tabella tix_log, scritta dal database) */
-const TXF={title:'Titolo',desc:'Descrizione',status:'Stato',prio:'Urgenza',due:'Scadenza',time:'Ora',dur:'Durata',rem:'Promemoria',assignees:'Assegnato a',gnames:'Gruppi',photo:'Foto',audio:'Vocale',uid:'Inserito da',preventivo:'Preventivo'},
+const TXF={title:'Titolo',desc:'Descrizione',status:'Stato',prio:'Urgenza',due:'Scadenza',time:'Ora',dur:'Durata',rem:'Promemoria',assignees:'Assegnato a',gnames:'Gruppi',photo:'Foto',audio:'Vocale',uid:'Inserito da',preventivo:'Preventivo',clk:'Cronometro'},
  TXS={Fare:'Da fare',Attesa:'In attesa',Fatto:'Fatto'};
 function txv(k,v){if(v==null||v===''||(Array.isArray(v)&&!v.length))return'—';
  if(k==='status')return TXS[v]||v;if(k==='prio')return(PR[v]||[v])[0];if(k==='due')return fmtD(v);
  if(k==='dur')return v>=60?(Math.floor(v/60)+' h'+(v%60?' '+v%60+' min':'')):v+' min';if(k==='rem')return+v?(v>=1440?'1 giorno':v>=60?(v/60)+' ore':v+' min')+' prima':'nessuno';
  if(k==='assignees')return[].concat(v).map(nm).join(', ');if(k==='uid')return nm(v);if(k==='gnames')return[].concat(v).join(', ');
  if(k==='photo')return v==='[nuova foto]'?'nuova foto':'foto';if(k==='audio')return'vocale';if(k==='desc'){v=String(v);return v.length>80?v.slice(0,80)+'…':v}
- if(typeof v==='object')return Array.isArray(v)?v.join(', '):(v.numero?'n. '+v.numero:JSON.stringify(v));return String(v)}
+ if(k==='clk')return clkTxt(v);if(typeof v==='object')return Array.isArray(v)?v.join(', '):(v.numero?'n. '+v.numero:JSON.stringify(v));return String(v)}
 function txLines(r){const c=r.changes||{};
  if(r.action==='update')return Object.keys(c).filter(k=>TXF[k]&&Array.isArray(c[k])).map(k=>E('div',{class:'mu'},TXF[k]+': '+txv(k,c[k][0])+'  ⇒  '+txv(k,c[k][1])));
  return['status','prio','due','assignees','gnames','photo','audio'].filter(k=>c[k]!=null&&c[k]!==''&&!(Array.isArray(c[k])&&!c[k].length)&&!(k==='status'&&r.action==='insert'&&c[k]==='Fare')).map(k=>E('div',{class:'mu'},TXF[k]+': '+txv(k,c[k])))}
@@ -277,7 +277,33 @@ function repView(t){const r=t.rep;
   r.note?E('p',{style:'white-space:pre-wrap;margin:4px 0'},r.note):null,
   okLink(r.link)?E('a',{class:'btn gh sm',href:r.link,target:'_blank',rel:'noopener',style:'text-decoration:none;display:inline-block;margin-top:6px'},'📓 Apri pagina OneNote'):null,
   r.by?E('div',{class:'mu',style:'font-size:12px;margin-top:4px'},'Inserito da '+nm(r.by)+(r.at?' il '+fmtI(r.at):'')):null)}
-async function doneModal(t){const r=t.rep||{},done=t.status==='Fatto',rows=E('div',{}),voci=await lstVoci(),byL=new Map(voci.map(v=>[v.l,v])),
+/* cronometro del lavoro: Avvio / Pausa / Fine lavori. Ogni tecnico ha il suo cronometro sul ticket (campo clk = {utente:{ms,on,end}}):
+   l'app manda solo clk_do = start / pause / stop, gli orari li scrive il server (il telefono non può falsificarli).
+   Il totale di tutti i tecnici precompila le ore di lavoro al completamento; completare il ticket ferma tutti i cronometri. */
+let CLK_SK=0;                                                    // differenza tra orologio del telefono e del server
+const clkMs=c=>(+c?.ms||0)+(c?.on?Math.max(0,Date.now()-CLK_SK-c.on):0),
+ clkTot=t=>Object.values(t.clk||{}).reduce((s,c)=>s+clkMs(c),0),
+ clkMin=t=>Math.round(clkTot(t)/60000),
+ hms=ms=>{const s=Math.floor(ms/1000),p=n=>String(n).padStart(2,'0');return Math.floor(s/3600)+':'+p(Math.floor(s%3600/60))+':'+p(s%60)},
+ clkSt=c=>c?.on?'in corso':c?.end?'finito':'in pausa',
+ clkTxt=(v,lv)=>v&&typeof v==='object'&&Object.keys(v).length?Object.entries(v).map(([k,c])=>nm(k)+' '+fmtMin(Math.round((lv?clkMs(c):+c?.ms||0)/60000))+' ('+clkSt(c)+')').join(', '):'—';
+async function clkDo(t,a){let f;try{await db.doc('tix/'+t.id).update({clk_do:a});f=(await db.doc('tix/'+t.id).get()).data()}catch(e){return err(e)}
+ if(!f)return close();const x={...f,id:t.id},c=x.clk?.[uid];if(a==='start'&&c?.on){const d=Date.now()-c.on;CLK_SK=Math.abs(d)<1e4?0:d}
+ toast({start:'▶ Lavoro avviato',pause:'⏸ Lavoro in pausa',stop:'⏹ Lavoro finito: '+fmtMin(Math.round(clkMs(c)/60000))}[a]);
+ if(a==='stop'&&x.status!=='Fatto'&&canRep(x))return doneModal(x);tixDetail(x)}
+function clkCard(t){const cs=t.clk||{},me=cs[uid],open=t.status!=='Fatto'&&canRep(t),oth=Object.keys(cs).filter(k=>k!==uid);
+ if(!open&&!Object.keys(cs).length)return null;
+ const live=[],sp=(c,f)=>{const e=E('b',{style:'font-variant-numeric:tabular-nums'},f(c));if(c?.on)live.push(()=>e.textContent=f(c));return e},
+  tot=E('b',{},fmtMin(clkMin(t))),btn=(l,a,k)=>E('button',{class:'btn sm'+(k?' '+k:''),onclick:()=>clkDo(t,a)},l),
+  card=E('div',{class:'card crono',style:'margin:8px 0'},E('b',{},'⏱️ Cronometro lavori'),
+   open?E('div',{class:'row',style:'margin:6px 0 0;align-items:center'},E('span',{style:'font-size:22px'},sp(me,c=>hms(clkMs(c)))),
+    E('span',{class:'mu'},me?'· '+clkSt(me):''),
+    ...(me?.on?[btn('⏸ Pausa','pause','gh'),btn('⏹ Fine lavori','stop','ok')]:me&&!me.end?[btn('▶ Riprendi','start'),btn('⏹ Fine lavori','stop','ok')]:[btn(me?'▶ Riprendi':'▶ Avvio lavori','start')])):null,
+   ...(open?oth:Object.keys(cs)).map(k=>E('div',{class:'mu'},nm(k)+': ',sp(cs[k],c=>fmtMin(Math.round(clkMs(c)/60000))),' · '+clkSt(cs[k]))),
+   Object.keys(cs).length>1||!open?E('div',{style:'margin-top:4px'},E('span',{class:'mu'},'Totale ore: '),tot):null);
+ if(live.length){const iv=setInterval(()=>{if(!card.isConnected)return clearInterval(iv);live.forEach(f=>f());tot.textContent=fmtMin(clkMin(t))},1000)}
+ return card}
+async function doneModal(t){const r=t.rep||{},done=t.status==='Fatto',cm=clkMin(t),pm=r.min||(!done&&cm)||0,rows=E('div',{}),voci=await lstVoci(),byL=new Map(voci.map(v=>[v.l,v])),
  dl=E('datalist',{id:'lstv'},voci.map(v=>E('option',{value:v.l}))),
  addRow=m=>{m=m||{};const d=E('input',{placeholder:voci.length?'Cerca nel listino o scrivi':'Materiale (es. cavo di rete)',value:m.d||'',list:'lstv',style:'flex:1',autocomplete:'off'}),
    q=E('input',{placeholder:'Q.tà',value:m.q||'',style:'width:70px'}),sn=E('input',{placeholder:'Seriali (facoltativi, separati da virgola)',value:m.sn||'',style:'width:100%;font-size:14px'}),
@@ -286,8 +312,8 @@ async function doneModal(t){const r=t.rep||{},done=t.status==='Fatto',rows=E('di
    row._v=()=>{const l=d.value.trim(),v=byL.get(l);return{d:l,q:q.value.trim(),sn:sn.value.trim(),c:v?v.c:(m.d===l?m.c||'':'')}};
    d.onchange=()=>{const v=byL.get(d.value.trim());if(v&&!q.value)q.value='1'+(v.um&&v.um!=='pz'?' '+v.um:'')};
    rows.append(row);return d},
- hh=E('input',{type:'number',min:0,max:999,inputmode:'numeric',placeholder:'0',value:r.min?Math.floor(r.min/60):'',style:'width:70px'}),
- mm=E('input',{type:'number',min:0,max:59,step:5,inputmode:'numeric',placeholder:'0',value:r.min?r.min%60:'',style:'width:70px'}),
+ hh=E('input',{type:'number',min:0,max:999,inputmode:'numeric',placeholder:'0',value:pm?Math.floor(pm/60):'',style:'width:70px'}),
+ mm=E('input',{type:'number',min:0,max:59,step:5,inputmode:'numeric',placeholder:'0',value:pm?pm%60:'',style:'width:70px'}),
  ln=E('input',{type:'url',placeholder:'Incolla qui il link della pagina',value:r.link||'',style:'width:100%'}),
  no=E('textarea',{rows:2,placeholder:'Note sul lavoro (facoltative)'},r.note||''),
  msg=E('p',{style:'color:#e00018;margin:0'}),
@@ -302,7 +328,8 @@ async function doneModal(t){const r=t.rep||{},done=t.status==='Fatto',rows=E('di
   run(db.doc('tix/'+t.id).update(u));close();toast(done?'Materiale e ore salvati':'Ticket completato: spostato in Archivio 🗄')};
  modal((done?'🧰 ':'✓ Completa · ')+t.title,E('div',{},dl,
   E('div',{class:'f'},E('span',{},'Materiale usato'+(!(r.mat||[]).length&&(t.matPrev||[]).length?' (dal preventivo: correggi se serve)':'')),rows,E('button',{class:'btn gh sm',onclick:()=>addRow().focus()},'➕ Aggiungi materiale')),
-  E('div',{class:'f'},E('span',{},'Ore di lavoro'),E('div',{class:'row',style:'margin:0'},hh,'ore',mm,'minuti')),
+  E('div',{class:'f'},E('span',{},'Ore di lavoro'+(!r.min&&!done&&cm?' (dal cronometro: correggi se serve)':'')),E('div',{class:'row',style:'margin:0'},hh,'ore',mm,'minuti'),
+   t.clk&&Object.keys(t.clk).length?E('div',{class:'mu',style:'font-size:13px;margin-top:4px'},'⏱️ Cronometro: '+clkTxt(t.clk,1)+(Object.keys(t.clk).length>1?' · totale '+fmtMin(cm):'')):null),
   fld('Pagina OneNote (facoltativa)',ln),E('p',{class:'mu',style:'margin:-6px 0 10px;font-size:13px'},'In OneNote: tasto destro sulla pagina → «Copia collegamento alla pagina», poi incolla qui.'),
   fld('Note',no),msg),
   [E('button',{class:'btn gh',onclick:close},'Annulla'),E('button',{class:'btn ok',onclick:save},done?'Salva':'✓ Completa')])}

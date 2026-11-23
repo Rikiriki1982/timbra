@@ -314,7 +314,7 @@ drop trigger if exists profiles_guard on public.profiles;
 create trigger profiles_guard before update on public.profiles for each row execute function public.profiles_guard();
 
 -- richieste: l'utente non si approva da solo; ticket: sul proprio sceglie gli assegnatari (solo utenti attivi),
--- su un ticket assegnato da altri cambia solo lo stato (più materiale e ore di lavoro al completamento)
+-- su un ticket assegnato da altri cambia solo lo stato (più materiale e ore di lavoro al completamento e il proprio cronometro)
 create or replace function public.docs_guard() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare c text;
@@ -338,7 +338,9 @@ begin
         case when new.data->>'status' in ('Fare','Attesa','Fatto') then new.data->>'status' else old.data->>'status' end)
         -- al completamento può scrivere anche materiale usato, ore di lavoro e pagina OneNote (rep) e la data di chiusura
         || case when jsonb_typeof(new.data->'rep') = 'object' then jsonb_build_object('rep', new.data->'rep') else '{}'::jsonb end
-        || case when jsonb_typeof(new.data->'doneAt') = 'number' then jsonb_build_object('doneAt', new.data->'doneAt') else '{}'::jsonb end;
+        || case when jsonb_typeof(new.data->'doneAt') = 'number' then jsonb_build_object('doneAt', new.data->'doneAt') else '{}'::jsonb end
+        -- e può usare il proprio cronometro del lavoro (Avvio / Pausa / Fine: lo calcola il trigger tix_clock)
+        || case when new.data->>'clk_do' in ('start','pause','stop') then jsonb_build_object('clk_do', new.data->'clk_do') else '{}'::jsonb end;
     end if;
     return new;
   end if;
@@ -421,6 +423,46 @@ begin
 end $$;
 drop trigger if exists docs_stamp on public.docs;
 create trigger docs_stamp before insert or update on public.docs for each row execute function public.days_stamp();
+
+-- 6b) TICKET: CRONOMETRO DEL LAVORO (Avvio / Pausa / Fine lavori)
+-- Cosa fa:
+--  Ogni tecnico ha il suo cronometro sul ticket, nel campo clk = {utente: {ms: tempo già fatto, on: avviato alle, end: finito}}.
+--  L'app manda solo clk_do = 'start' / 'pause' / 'stop': gli orari li scrive il server, non il telefono,
+--  e nessuno può cambiare a mano il cronometro (né il proprio né quello degli altri).
+--  Quando il ticket diventa «Fatto» tutti i cronometri ancora accesi si fermano.
+create or replace function public.tix_clock() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  a text := new.data->>'clk_do';
+  me text := auth.uid()::text;
+  t bigint := floor(extract(epoch from now()) * 1000);
+  c jsonb := '{}'::jsonb;
+  m jsonb; k text;
+begin
+  if new.coll <> 'tix' then return new; end if;
+  new.data := new.data - 'clk_do';
+  if me is null then return new; end if;                             -- pannello Supabase: nessun controllo
+  if tg_op = 'UPDATE' and jsonb_typeof(old.data->'clk') = 'object' then c := old.data->'clk'; end if;
+  if a in ('start', 'pause', 'stop') then
+    m := coalesce(c->me, '{}'::jsonb);
+    m := jsonb_build_object('ms', coalesce((m->>'ms')::bigint, 0)
+           + case when m ? 'on' then greatest(t - (m->>'on')::bigint, 0) else 0 end);
+    if a = 'start' then m := m || jsonb_build_object('on', t); end if;
+    if a = 'stop' then m := m || '{"end": true}'::jsonb; end if;
+    c := c || jsonb_build_object(me, m);
+  end if;
+  if tg_op = 'UPDATE' and new.data->>'status' = 'Fatto' and coalesce(old.data->>'status', '') <> 'Fatto' then
+    for k in select jsonb_object_keys(c) loop
+      if c->k ? 'on' then
+        c := c || jsonb_build_object(k, jsonb_build_object('ms', coalesce((c->k->>'ms')::bigint, 0) + greatest(t - (c->k->>'on')::bigint, 0), 'end', true));
+      end if;
+    end loop;
+  end if;
+  if c = '{}'::jsonb then new.data := new.data - 'clk'; else new.data := new.data || jsonb_build_object('clk', c); end if;
+  return new;
+end $$;
+drop trigger if exists docs_tix_clock on public.docs;
+create trigger docs_tix_clock before insert or update on public.docs for each row execute function public.tix_clock();
 
 create or replace function public.days_log_write() returns trigger
 language plpgsql security definer set search_path = public as $$

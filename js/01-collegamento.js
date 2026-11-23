@@ -60,9 +60,14 @@ const load=()=>JSON.parse(ls.get('ptp_db')||'{}'),save=d=>ls.set('ptp_db',JSON.s
 const sd=(id,v)=>({id,exists:v!==undefined,data:()=>v});
 const emu=(d,q,id,w)=>{const st=(d.staff||{})[q.uid]||{},who=st.name||st.email||'Un dipendente',lb={ferie:'ferie',permesso:'un permesso',malattia:'malattia',modifica:'una modifica al calendario'}[q.type]||q.type,per=q.from===q.to?'il '+q.from:'dal '+q.from+' al '+q.to;
  (d.notifs=d.notifs||{})[rid()]=w==='new'?{kind:'req',ref:id,uid:q.uid,msg:who+' ha richiesto '+lb+' '+per,read:false,created:Date.now()}:{kind:'decision',ref:id,uid:q.uid,to:q.uid,msg:'La tua richiesta di '+lb+' ('+q.from+') è stata '+(q.status==='approved'?'approvata':'rifiutata'),read:false,created:Date.now()}};
+/* come il trigger tix_clock del database: clk_do = start / pause / stop aggiorna il cronometro del lavoro */
+const clk=(o,v)=>{const a=v.clk_do,t=Date.now(),c={...((o&&o.clk)||{})};delete v.clk_do;delete v.clk;
+ if(['start','pause','stop'].includes(a)){const m=c.local||{ms:0},n={ms:(+m.ms||0)+(m.on?Math.max(0,t-m.on):0)};if(a==='start')n.on=t;if(a==='stop')n.end=true;c.local=n}
+ if(v.status==='Fatto'&&o&&o.status!=='Fatto')for(const k in c)if(c[k].on)c[k]={ms:(+c[k].ms||0)+Math.max(0,t-c[k].on),end:true};
+ if(Object.keys(c).length)v.clk=c;return v};
 const dr=(c,id)=>({id,get:async()=>sd(id,(load()[c]||{})[id]),
- set:async v=>{const d=load(),nw=!(d[c]||{})[id];(d[c]=d[c]||{})[id]=v;if(c==='reqs'&&nw&&v.status==='pending')emu(d,v,id,'new');save(d);notify()},
- update:async v=>{const d=load(),o=(d[c]||{})[id];if(!o)throw new Error('Documento inesistente');d[c][id]={...o,...v};if(c==='reqs'&&o.status==='pending'&&v.status&&v.status!=='pending')emu(d,d[c][id],id,'dec');save(d);notify()},
+ set:async v=>{const d=load(),nw=!(d[c]||{})[id];if(c==='tix')v=clk((d[c]||{})[id],{...v});(d[c]=d[c]||{})[id]=v;if(c==='reqs'&&nw&&v.status==='pending')emu(d,v,id,'new');save(d);notify()},
+ update:async v=>{const d=load(),o=(d[c]||{})[id];if(!o)throw new Error('Documento inesistente');d[c][id]=c==='tix'?clk(o,{...o,...v}):{...o,...v};if(c==='reqs'&&o.status==='pending'&&v.status&&v.status!=='pending')emu(d,d[c][id],id,'dec');save(d);notify()},
  delete:async()=>{const d=load();if(d[c])delete d[c][id];save(d);notify()}});
 const db={doc:p=>{const[c,id]=p.split('/');return dr(c,id)},collection:c=>({doc:id=>dr(c,id||rid()),add:async v=>{const id=rid();await dr(c,id).set(v);return dr(c,id)},
  onSnapshot:f=>{const run=()=>f({docs:Object.entries(load()[c]||{}).map(([id,v])=>sd(id,v))});subs.push(run);run();return()=>{}}})};
