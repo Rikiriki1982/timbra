@@ -12,7 +12,7 @@ A ogni modifica GitHub apre l'app in un browser di prova, con un **database fint
 - richiesta ferie del dipendente e approvazione del titolare
 - permesso a ore (dalle/alle) con tipo di permesso, uscita prevista in «Oggi», promemoria spostato all'ora del permesso
 - arrotondamento degli orari: l'orario reale resta salvato, le ore si calcolano arrotondate
-- creazione di un ticket e chiusura
+- creazione di un ticket e chiusura; storico modifiche del ticket (chi, quando, cosa)
 - l'ordine dei file divisi in `js/` e `preventivi/js/` (`controlla-ordine.js`)
 - preventivi: accesso solo per Proprietario/Admin, totali, PDF, archivio online, riapertura dal PDF,
   unione delle modifiche di due admin
