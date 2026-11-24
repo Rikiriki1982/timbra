@@ -42,11 +42,11 @@ test.describe('titolare',()=>{
     await page.locator('select.sel').selectOption(EMP.id);
     await expect(page.locator('main')).toContainText('2026-11-1709:1018:10608');
     await page.locator('nav').getByRole('button',{name:'Team'}).click();
-    await page.getByRole('button',{name:'⏱️ Arrotondamento orari'}).click();
+    await page.getByRole('button',{name:'⏱️ Tolleranza e arrotondamento'}).click();
     const md=page.locator('.md');
-    await md.locator('select').nth(0).selectOption('15');
     await md.locator('select').nth(2).selectOption('15');
-    await expect(md).toContainText('entrata 9:10 → 09:15, uscita 18:10 → 18:00');
+    await md.locator('select').nth(4).selectOption('15');
+    await expect(md).toContainText('entrata 09:10 → 09:15');
     await md.getByRole('button',{name:'Salva'}).click();
     await expect.poll(async()=>(await page.fakeDb()).tables.docs.find(d=>d.coll==='settings'&&d.id==='rules')?.data.rnd).toMatchObject({inStep:15,inDir:'up',outStep:15,outDir:'down'});
     await page.locator('nav').getByRole('button',{name:'Report'}).click();

@@ -573,7 +573,8 @@ $$;
 
 -- promemoria a orario: orario del singolo dipendente (o della ditta), niente nei festivi e nei giorni di riposo,
 -- niente se c'è una ferie/permesso a giornata/malattia approvata o in attesa che copre oggi;
--- con un permesso a ore approvato l'entrata o l'uscita si spostano
+-- con un permesso a ore approvato l'entrata o l'uscita si spostano;
+-- l'entrata si ricorda 5 minuti prima dell'orario, l'uscita 5 minuti dopo
 create or replace function public.push_due(p_now timestamptz default now())
 returns table(user_id uuid, title text, body text, tag text)
 language plpgsql security definer set search_path = public as $$
@@ -612,15 +613,15 @@ begin
         elsif public.hhmm_min(hp->>'hout', 1440) >= tout then tout := public.hhmm_min(hp->>'hin', tout);
         end if;
       end if;
-      if m >= tin and m < tout and coalesce(day->>'in', '') = '' and coalesce(day->>'off', '') in ('', 'false') then
+      if m >= tin - 5 and m < tout and coalesce(day->>'in', '') = '' and coalesce(day->>'off', '') in ('', 'false') then
         insert into push_log(key) values ('in:' || r.id || ':' || d) on conflict do nothing;
         get diagnostics n = row_count;
-        if n = 1 then user_id := r.id; title := 'Timbra l''entrata'; body := 'Non hai ancora timbrato l''entrata (orario ' || to_char(make_time(tin / 60, tin % 60, 0), 'HH24:MI') || ').'; tag := 'in'; return next; end if;
+        if n = 1 then user_id := r.id; title := 'Timbra l''entrata'; body := case when m < tin then 'Alle ' || to_char(make_time(tin / 60, tin % 60, 0), 'HH24:MI') || ' inizia il tuo orario: ricordati di timbrare l''entrata.' else 'Non hai ancora timbrato l''entrata (orario ' || to_char(make_time(tin / 60, tin % 60, 0), 'HH24:MI') || ').' end; tag := 'in'; return next; end if;
       end if;
-      if m >= tout and coalesce(day->>'in', '') <> '' and coalesce(day->>'out', '') = '' then
+      if m >= tout + 5 and coalesce(day->>'in', '') <> '' and coalesce(day->>'out', '') = '' then
         insert into push_log(key) values ('out:' || r.id || ':' || d) on conflict do nothing;
         get diagnostics n = row_count;
-        if n = 1 then user_id := r.id; title := 'Timbra l''uscita'; body := 'Sono le ' || to_char(make_time(tout / 60, tout % 60, 0), 'HH24:MI') || ': ricordati di timbrare l''uscita.' || case when hp is not null then ' Oggi sei in permesso dalle ' || (hp->>'hin') || ' alle ' || (hp->>'hout') || '.' else '' end; tag := 'out'; return next; end if;
+        if n = 1 then user_id := r.id; title := 'Timbra l''uscita'; body := 'Il tuo orario è finito alle ' || to_char(make_time(tout / 60, tout % 60, 0), 'HH24:MI') || ': ricordati di timbrare l''uscita.' || case when hp is not null then ' Oggi sei in permesso dalle ' || (hp->>'hin') || ' alle ' || (hp->>'hout') || '.' else '' end; tag := 'out'; return next; end if;
       end if;
     end loop;
   end if;
