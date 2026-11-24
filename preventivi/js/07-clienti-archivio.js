@@ -3,7 +3,7 @@
 "use strict";
 /* ---------- cliente: ricerca dati ---------- */
 function refreshClientList(){const cl=store.get("clienti",[]);$("#dlClienti").innerHTML=cl.map(c=>`<option value="${esc(c.nome)}">${esc(c.piva||"")} ${esc(c.legale||"")}</option>`).join("")}
-function setClient(o,overwrite){CF.forEach(k=>{if(o[k]!=null&&o[k]!==""&&(overwrite||!q.cliente[k]))q.cliente[k]=o[k]});CF.forEach(k=>$("#c_"+k).value=q.cliente[k]??"");changed()}
+function setClient(o,overwrite){CF.forEach(k=>{if(o[k]!=null&&o[k]!==""&&(overwrite||!q.cliente[k]))q.cliente[k]=o[k]});if(o.sdiVis!=null)q.cliente.sdiVis=!!o.sdiVis;showClient();changed()}
 $("#c_nome").addEventListener("change",()=>{const v=$("#c_nome").value.trim().toLowerCase();const c=store.get("clienti",[]).find(x=>x.nome.toLowerCase()===v);
   if(c){setClient(c,true);$("#viesMsg").textContent="Dati presi dai clienti salvati."}
   const lk=$("#lnkPiva");if(lk)lk.href="https://www.google.com/search?q="+encodeURIComponent((v||"")+" partita iva sede legale")});
@@ -98,7 +98,7 @@ $("#bRestore").onclick=()=>{modal(`<h3>Ripristina backup</h3><p class="hint">Inc
 $("#bPickClient").onclick=()=>{const cl=store.get("clienti",[]);
   modal(`<h3>Clienti salvati</h3>${cl.length?cl.map((c,i)=>`<div class="picker-item" data-i="${i}"><div><b>${esc(c.nome)}</b><br><span class="muted">${esc(c.piva)} · ${esc(c.legale)}</span></div></div>`).join(""):`<p class="muted">I clienti vengono memorizzati quando salvi un preventivo.</p>`}
    <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn" data-close>Chiudi</button></div>`);
-  $(".modal").onclick=e=>{const it=e.target.closest(".picker-item");if(!it)return;q.cliente=Object.assign({},cl[+it.dataset.i]);CF.forEach(k=>$("#c_"+k).value=q.cliente[k]??"");closeModal();changed()}};
+  $(".modal").onclick=e=>{const it=e.target.closest(".picker-item");if(!it)return;q.cliente=Object.assign({},cl[+it.dataset.i]);showClient();closeModal();changed()}};
 
 /* ---------- azienda ---------- */
 const AF=["forn","nome","piva","cf","sede","oper","tel","email","web","iban","colore","formato","pref","next","foot","cond","note","pag","iva","ragione","capsoc","pec"];

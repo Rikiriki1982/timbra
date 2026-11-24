@@ -55,7 +55,7 @@ async function loadTeam(){
   return TEAM}
 function ticketDesc(a){
   const c=a.cliente||{},L=[`Preventivo ${a.numero} del ${fmtDate(a.data)}`+(a.oggetto?` – ${a.oggetto}`:""),"",`Cliente: ${c.nome||""}`];
-  const sede=c.esecutiva||c.legale;if(sede)L.push(`Indirizzo: ${sede}`);if(c.ref)L.push(`Referente: ${c.ref}`);if(c.tel)L.push(`Telefono: ${c.tel}`);
+  const sede=c.esecutiva||cliSede(c);if(sede)L.push(`Indirizzo: ${sede}`);if(c.ref)L.push(`Referente: ${c.ref}`);if(c.tel)L.push(`Telefono: ${c.tel}`);
   const rows=a.tipo==="conn"?(a.conn||[]).filter(r=>r.titolo).map(r=>`- ${num.format(n(r.qta)||1)} × ${r.titolo}`):(a.righe||[]).map(r=>`- ${num.format(n(r.qta))} ${r.um||""} ${lbl(r)}`.replace(/\s+/g," "));
   if(rows.length)L.push("",a.tipo==="conn"?"Servizi:":"Lavori e materiali:",...rows);
   if(a.tempi)L.push("","Tempi: "+a.tempi);

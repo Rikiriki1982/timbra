@@ -21,15 +21,18 @@ function calc(qq){
 
 /* ---------- binding form preventivo ---------- */
 const QF=["tipo","connFinale","voipTitolo","connNote","connDurata","numero","data","validita","rev","oggetto","titoloTab","layout","totIva","sconto","scontoTipo","iva","arr","show","note","pag","tempi","cond"];
-const CF=["nome","piva","cf","legale","esecutiva","ref","tel","email","sdi"];
+const CF=["nome","piva","cf","legale","cap","prov","esecutiva","ref","tel","email","sdi"];
+// mostra nel modulo i dati del cliente (la spunta «SDI visibile» è a parte perché è una casella)
+function showClient(){CF.forEach(k=>$("#c_"+k).value=q.cliente[k]??"");$("#c_sdiVis").checked=!!q.cliente.sdiVis}
 function fillForm(){
   QF.forEach(k=>$("#q_"+k).value=q[k]??"");
-  CF.forEach(k=>$("#c_"+k).value=q.cliente[k]??"");
+  showClient();
   $("#q_showImg").checked=!!q.showImg;$("#q_showListino").checked=!!q.showListino;$("#q_dataTab").checked=!!q.dataTab;
   applyTipo();renderRows();renderConnRows();renderSheet();fillStato();
 }
 QF.forEach(k=>$("#q_"+k).addEventListener("input",e=>{q[k]=e.target.value;changed()}));
 CF.forEach(k=>$("#c_"+k).addEventListener("input",e=>{q.cliente[k]=e.target.value;changed()}));
+$("#c_sdiVis").addEventListener("change",e=>{q.cliente.sdiVis=e.target.checked;changed()});
 $("#q_showImg").addEventListener("change",e=>{q.showImg=e.target.checked;changed()});
 $("#q_dataTab").addEventListener("change",e=>{q.dataTab=e.target.checked;changed()});
 $("#q_showListino").addEventListener("change",e=>{q.showListino=e.target.checked;changed()});

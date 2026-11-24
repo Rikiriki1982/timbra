@@ -19,6 +19,15 @@ function lmPrice(x){
   if(!r.omaggio&&n(r.sconto)>0)h+=`<br><span style="color:#a15c00">sconto ${num.format(n(r.sconto))}%</span>`;
   return h;
 }
+/* sede legale del cliente con CAP e provincia (senza ripeterli se sono già scritti nell'indirizzo) */
+function cliSede(cl){
+  let s=String(cl.legale||"").trim();const cap=String(cl.cap||"").trim(),pr=String(cl.prov||"").replace(/[^a-z]/gi,"").toUpperCase();
+  if(cap&&!s.includes(cap)){const i=s.lastIndexOf(",");s=i>=0?`${s.slice(0,i+1)} ${cap} ${s.slice(i+1).trim()}`.trim():(s?s+", ":"")+cap}
+  if(pr&&!new RegExp("\\(\\s*"+pr+"\\s*\\)|\\b"+pr+"$","i").test(s))s+=(s?" ":"")+`(${pr})`;
+  return s;
+}
+/* codice SDI nel documento solo se è spuntato «visibile» */
+const cliSdi=cl=>cl.sdi&&cl.sdiVis?`<br>Cod. SDI ${esc(cl.sdi)}`:"";
 const pgFootHtml=()=>{if(!hasFoot())return "";const f=footLines(),row=a=>a.map(([l,v])=>`<div>${l?`<b>${l}</b>`:""}${esc(v)}</div>`).join("");
   return `<div class="pgsp"></div><div class="pgfoot" style="--ft-line:${esc(footRgb())}"><div class="pfh"><span class="pfn">${esc(f.name)}</span><span class="pfp">1</span></div><div class="pfc"><div>${row(f.L)}</div><div class="pfr">${row(f.R)}</div></div></div>`};
 function renderConn(){
@@ -34,7 +43,7 @@ function renderConn(){
    <div class="lp">
     <div class="ogg">OGGETTO:<br>${esc(q.oggetto)}</div>
     <div class="cli"><div class="cn">Spett. ${esc(cl.nome)}${cl.piva?`<br>p.iva ${esc(cl.piva)}`:""}</div>
-     <div class="ca">${esc(cl.legale)}${cl.esecutiva?`<br>Sede esecutiva: ${esc(cl.esecutiva)}`:""}${cl.cf?`<br>C.F. ${esc(cl.cf)}`:""}${cl.sdi?`<br>Cod. SDI ${esc(cl.sdi)}`:""}${cl.ref?`<br>Alla c.a. ${esc(cl.ref)}`:""}</div></div>
+     <div class="ca">${esc(cliSede(cl))}${cl.esecutiva?`<br>Sede esecutiva: ${esc(cl.esecutiva)}`:""}${cl.cf?`<br>C.F. ${esc(cl.cf)}`:""}${cliSdi(cl)}${cl.ref?`<br>Alla c.a. ${esc(cl.ref)}`:""}</div></div>
    </div>
    <div class="pn">Preventivo ${esc(q.numero)}${q.rev?" "+esc(q.rev):""} del ${fmtDate(q.data)}</div>
    <table class="cn"><tr><td class="hd2"${anyDett?' colspan="2"':""}>SERVIZIO/PRODOTTO</td><td class="hd2 c">QUANTITA'</td><td class="hd2 c">UNA TANTUM</td><td class="hd2 c">CANONE MENSILE</td></tr>
@@ -61,7 +70,7 @@ function renderLumia(c){
    <div class="lp">
     <div class="ogg">OGGETTO:<br>${esc(q.oggetto)}</div>
     <div class="cli"><div class="cn">Spett.${esc(cl.nome)}${cl.piva?`<br>p.iva ${esc(cl.piva)}`:""}</div>
-     <div class="ca">${esc(cl.legale)}${cl.esecutiva?`<br>Sede esecutiva: ${esc(cl.esecutiva)}`:""}${cl.cf?`<br>C.F. ${esc(cl.cf)}`:""}${cl.sdi?`<br>Cod. SDI ${esc(cl.sdi)}`:""}${cl.ref?`<br>Alla c.a. ${esc(cl.ref)}`:""}</div></div>
+     <div class="ca">${esc(cliSede(cl))}${cl.esecutiva?`<br>Sede esecutiva: ${esc(cl.esecutiva)}`:""}${cl.cf?`<br>C.F. ${esc(cl.cf)}`:""}${cliSdi(cl)}${cl.ref?`<br>Alla c.a. ${esc(cl.ref)}`:""}</div></div>
    </div>
    <div class="pn">Preventivo ${esc(q.numero)}${q.rev?" "+esc(q.rev):""} del ${fmtDate(q.data)}</div>
    <table>
@@ -111,10 +120,10 @@ function renderSheet(){
    <div class="parties">
     <div class="box"><div class="lbl">Cliente</div><b>${esc(cl.nome)||"—"}</b><br>
       ${cl.piva?`P.IVA ${esc(cl.piva)}`:""}${cl.cf&&cl.cf!==cl.piva.replace(/^IT/,"")?`${cl.piva?" · ":""}C.F. ${esc(cl.cf)}`:""}
-      ${cl.sdi?`<br>Cod. SDI ${esc(cl.sdi)}`:""}${cl.ref?`<br>Alla c.a. ${esc(cl.ref)}`:""}
+      ${cliSdi(cl)}${cl.ref?`<br>Alla c.a. ${esc(cl.ref)}`:""}
       ${cl.tel||cl.email?`<br>${[esc(cl.tel),esc(cl.email)].filter(Boolean).join(" · ")}`:""}</div>
-    <div class="box"><div class="lbl">Sede legale</div>${esc(cl.legale)||"—"}
-      <div class="lbl" style="margin-top:2mm">Sede esecutiva</div>${esc(cl.esecutiva)||(cl.legale?"Coincide con la sede legale":"—")}</div>
+    <div class="box"><div class="lbl">Sede legale</div>${esc(cliSede(cl))||"—"}
+      <div class="lbl" style="margin-top:2mm">Sede esecutiva</div>${esc(cl.esecutiva)||(cliSede(cl)?"Coincide con la sede legale":"—")}</div>
    </div>
    ${q.oggetto?`<div class="ogg"><span>Oggetto</span>${esc(q.oggetto)}</div>`:""}
    <table class="items"><thead><tr>${useImg?"<th></th>":""}<th>Descrizione</th><th class="num">Q.tà</th><th>U.M.</th>
