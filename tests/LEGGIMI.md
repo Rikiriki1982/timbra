@@ -13,6 +13,7 @@ A ogni modifica GitHub apre l'app in un browser di prova, con un **database fint
 - permesso a ore (dalle/alle) con tipo di permesso, uscita prevista in «Oggi», promemoria spostato all'ora del permesso
 - arrotondamento degli orari: l'orario reale resta salvato, le ore si calcolano arrotondate
 - tolleranza su entrata e uscita (es. orario 8:00, tolleranza 10 minuti: chi timbra 8:10 conta 8:00)
+- promemoria di timbratura nell'app: entrata 5 minuti prima dell'orario, uscita 5 minuti dopo (anche le notifiche sul telefono, provate nel database)
 - creazione di un ticket e chiusura; storico modifiche del ticket (chi, quando, cosa)
 - l'ordine dei file divisi in `js/` e `preventivi/js/` (`controlla-ordine.js`)
 - preventivi: accesso solo per Proprietario/Admin, totali, PDF, archivio online, riapertura dal PDF,

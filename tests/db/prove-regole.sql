@@ -160,7 +160,11 @@ insert into public.docs (coll, id, data) values ('reqs', 'p1', '{"uid":"00000000
 insert into public.docs (coll, id, data) values ('days', '00000000-0000-4000-8000-000000000002_2026-11-17', '{"uid":"00000000-0000-4000-8000-000000000002","date":"2026-11-17","in":"09:00","out":""}');
 do $$ begin
   assert (select count(*) from public.push_due(timestamptz '2026-11-17 15:50 Europe/Rome') where tag = 'out') = 0, 'troppo presto per il promemoria di uscita';
-  assert (select count(*) from public.push_due(timestamptz '2026-11-17 16:01 Europe/Rome') where tag = 'out') = 1, 'con il permesso dalle 16 il promemoria di uscita deve arrivare alle 16';
+  assert (select count(*) from public.push_due(timestamptz '2026-11-17 16:04 Europe/Rome') where tag = 'out') = 0, 'il promemoria di uscita arriva 5 minuti dopo l''orario';
+  assert (select count(*) from public.push_due(timestamptz '2026-11-17 16:05 Europe/Rome') where tag = 'out') = 1, 'con il permesso dalle 16 il promemoria di uscita deve arrivare alle 16:05';
+  -- entrata: 5 minuti prima dell'orario (9:00 → 8:55)
+  assert (select count(*) from public.push_due(timestamptz '2026-11-18 08:54 Europe/Rome') where tag = 'in') = 0, 'troppo presto per il promemoria di entrata';
+  assert (select count(*) from public.push_due(timestamptz '2026-11-18 08:55 Europe/Rome') where tag = 'in') = 1, 'il promemoria di entrata deve arrivare alle 8:55';
 end $$;
 
 -- completamento del ticket: Mario, sul ticket assegnato da altri, salva anche materiale e ore (rep), ma non il resto
