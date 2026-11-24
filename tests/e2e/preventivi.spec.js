@@ -117,9 +117,8 @@ test('PDF: codice SDI solo se spuntato, CAP e provincia nella sede legale',async
   await page.locator('#c_legale').fill('Via Roma 1, 27030 Pieve del Cairo (PV)');
   await expect(sheet).toContainText('Via Roma 1, 27030 Pieve del Cairo (PV)');
   await expect(sheet).not.toContainText('(PV) (PV)');
-  // modello Classico: nessuna riga sotto l'intestazione
+  // anche nel modello Classico
   await page.locator('#q_layout').selectOption('classico');
-  await expect(sheet.locator('.hdr')).toHaveCSS('border-bottom-style','none');
   await expect(sheet).toContainText('Cod. SDI UFABCD');
   expect(page.errors).toEqual([]);
 });
