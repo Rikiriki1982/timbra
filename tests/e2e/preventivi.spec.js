@@ -99,3 +99,27 @@ test('tutte le schede dei preventivi si aprono; listino, archivio e stato funzio
   await expect(page.locator('#v-log')).toBeVisible();
   expect(page.errors).toEqual([]);
 });
+
+test('PDF: codice SDI solo se spuntato, CAP e provincia nella sede legale',async({page})=>{
+  await page.goto('/preventivi/');
+  await expect(page.locator('#syncSt')).toContainText('Salvato');
+  await page.locator('#c_nome').fill('Comune di Prova');
+  await page.locator('#c_legale').fill('Via Roma 1, Pieve del Cairo');
+  await page.locator('#c_cap').fill('27030');
+  await page.locator('#c_prov').fill('pv');
+  await page.locator('#c_sdi').fill('UFABCD');
+  const sheet=page.locator('#sheet');
+  await expect(sheet).toContainText('Via Roma 1, 27030 Pieve del Cairo (PV)');
+  await expect(sheet).not.toContainText('UFABCD');
+  await page.locator('#c_sdiVis').check();
+  await expect(sheet).toContainText('Cod. SDI UFABCD');
+  // CAP e provincia già scritti nell'indirizzo non vengono ripetuti
+  await page.locator('#c_legale').fill('Via Roma 1, 27030 Pieve del Cairo (PV)');
+  await expect(sheet).toContainText('Via Roma 1, 27030 Pieve del Cairo (PV)');
+  await expect(sheet).not.toContainText('(PV) (PV)');
+  // modello Classico: nessuna riga sotto l'intestazione
+  await page.locator('#q_layout').selectOption('classico');
+  await expect(sheet.locator('.hdr')).toHaveCSS('border-bottom-style','none');
+  await expect(sheet).toContainText('Cod. SDI UFABCD');
+  expect(page.errors).toEqual([]);
+});

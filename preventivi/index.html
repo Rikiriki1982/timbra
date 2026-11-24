@@ -90,7 +90,7 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
 /* ---------- Foglio A4 ---------- */
 .sheet-wrap{overflow-x:auto;padding-bottom:6px}
 .sheet{background:var(--paper);color:var(--paper-ink);width:210mm;min-height:297mm;padding:14mm 13mm;margin:0 auto;box-shadow:0 2px 14px rgba(0,0,0,.12);font-size:10pt;line-height:1.38;font-family:var(--sans)}
-.sheet .hdr{display:flex;justify-content:space-between;gap:10mm;align-items:flex-start;border-bottom:2px solid var(--paper-ink);padding-bottom:5mm}
+.sheet .hdr{display:flex;justify-content:space-between;gap:10mm;align-items:flex-start;padding-bottom:5mm}
 .sheet .logo{max-width:60mm;max-height:24mm;object-fit:contain;display:block;margin-bottom:2mm}
 .sheet .az{font-size:8.6pt;color:#3c4652}
 .sheet .az b{font-size:11pt;color:var(--paper-ink)}
@@ -245,12 +245,15 @@ table.list td.num,table.list th.num{text-align:right;font-family:var(--mono);fon
     <div id="nomeRes" class="full" style="display:grid;gap:6px"></div>
      <label class="f">Partita IVA<div style="display:flex;gap:6px"><input id="c_piva" class="inp" inputmode="numeric" placeholder="11 cifre"><button class="btn" id="bVies" type="button">Cerca dati</button></div></label>
      <label class="f">Codice fiscale<input id="c_cf"></label>
-     <label class="f full">Sede legale<input id="c_legale" placeholder="Via, CAP, Città (Prov.)"></label>
+     <label class="f full">Sede legale<input id="c_legale" placeholder="Via e città (es. Via Roma 1, Pavia)"></label>
+     <label class="f">CAP<input id="c_cap" inputmode="numeric" maxlength="5" placeholder="es. 27100"></label>
+     <label class="f">Provincia<input id="c_prov" maxlength="2" placeholder="es. PV" style="text-transform:uppercase"></label>
      <label class="f full">Sede esecutiva / cantiere<input id="c_esecutiva" placeholder="Lascia vuoto se coincide con la sede legale"></label>
      <label class="f">Referente<input id="c_ref"></label>
      <label class="f">Telefono<input id="c_tel"></label>
      <label class="f">Email / PEC<input id="c_email"></label>
      <label class="f">Codice SDI<input id="c_sdi"></label>
+     <label class="chk" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="c_sdiVis"> Codice SDI visibile nel PDF</label>
     </div>
     <p class="hint" id="viesMsg">Scrivi il nome e premi «🔎 Cerca» (Comuni ed enti pubblici: dall'indice ufficiale IPA con P.IVA, sede, PEC e codice SDI) oppure inserisci la partita IVA e premi «Cerca dati» (registro europeo VIES). Non conosci la P.IVA? <a id="lnkPiva" href="https://www.google.com/search?q=partita+iva" target="_blank" rel="noopener">Cercala su Google</a>.</p>
    </div>
